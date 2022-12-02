@@ -28,7 +28,7 @@ m = midi.connect()
 --
 -- VARIABLES
 --
-PATH = _path.data.."twister16/"
+PATH = _path.data.."sketch/"
 bank = 1
 bank_size = 4
 bank_start = 0
@@ -168,7 +168,7 @@ end
 --
 function init_pset_callbacks()
   params.action_write = function(filename,name,number)
-    print("finished writing '"..filename.."' as '"..name.."'")
+    print("finished writing '"..filename.."' as '"..name.."' and PSET number: "..number)
     
     local pattern_data = {}
     for i=1,7 do
@@ -189,7 +189,7 @@ function init_pset_callbacks()
   end
   
   params.action_read = function(filename,silent,number)
-    print("finished reading '"..filename.."'")
+    print("finished reading '"..filename.."' as PSET number: "..number)
     local pset_file = io.open(filename, "r")
     local pattern_data = {}
     for i=1,7 do
@@ -207,6 +207,16 @@ function init_pset_callbacks()
     end
     grid_dirty = true
     screen_dirty = true
+  end
+  
+  params.action_delete = function(filename,name,number)
+    print("finished deleting '"..filename.."' as '"..name.."' and PSET number: "..number)
+    for i=1,7 do
+      local pattern_file = PATH..number.."_pattern"..i..".pdata"
+      if util.file_exists(pattern_file) then
+        os.execute("rm "..pattern_file)
+      end
+    end
   end
 end
 
