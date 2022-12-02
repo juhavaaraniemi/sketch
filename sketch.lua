@@ -1,5 +1,6 @@
 -- sketch
---
+-- v 0.1
+
 -- isomorphic keyboard 
 -- and pattern recorder 
 -- for sketching
@@ -55,6 +56,18 @@ pat_timer = {}
 -- INIT FUNCTIONS
 --
 function init_parameters()
+
+  params:add_separator("sketch - routing")
+  params:add{
+    type="option",
+    id="output",
+    name="output",
+    options={"audio","midi","audio+midi"},
+    default=1,
+    action=function()
+      all_notes_off()
+    end
+  }
   params:add{
     type="number",
     id="note_channel",
@@ -71,6 +84,8 @@ function init_parameters()
     max=16,
     default=2
   }
+  
+  params:add_separator("sketch - keyboard")
   params:add{
     type="option",
     id="scale",
@@ -124,17 +139,6 @@ function init_engine()
   MollyThePoly.add_params()
 end
 
-
-function init_grid()
-  momentary = {}
-  for x = 1,16 do
-    momentary[x] = {}
-    for y = 1,7 do
-      momentary[x][y] = false
-    end
-  end
-end
-
 function init_pattern_recorders()
   cc1_pattern = pattern_time.new()
   cc1_pattern.process = parse_cc1_pattern
@@ -168,8 +172,6 @@ end
 --
 function init_pset_callbacks()
   params.action_write = function(filename,name,number)
-    print("finished writing '"..filename.."' as '"..name.."' and PSET number: "..number)
-    
     local pattern_data = {}
     for i=1,7 do
       local pattern_file = PATH..number.."_pattern_"..i..".pdata"
@@ -186,14 +188,14 @@ function init_pset_callbacks()
         end    
       end
     end
+    print("finished writing '"..filename.."' as '"..name.."' and PSET number: "..number)
   end
   
   params.action_read = function(filename,silent,number)
-    print("finished reading '"..filename.."' as PSET number: "..number)
     local pset_file = io.open(filename, "r")
     local pattern_data = {}
     for i=1,7 do
-      local pattern_file = PATH..number.."_pattern"..i..".pdata"
+      local pattern_file = PATH..number.."_pattern_"..i..".pdata"
       if util.file_exists(pattern_file) then
         pattern_data[i] = {}
         grid_pattern[i]:rec_stop()
@@ -207,16 +209,19 @@ function init_pset_callbacks()
     end
     grid_dirty = true
     screen_dirty = true
+    print("finished reading '"..filename.."' as PSET number: "..number)
   end
   
   params.action_delete = function(filename,name,number)
     print("finished deleting '"..filename.."' as '"..name.."' and PSET number: "..number)
     for i=1,7 do
-      local pattern_file = PATH..number.."_pattern"..i..".pdata"
+      local pattern_file = PATH..number.."_pattern_"..i..".pdata"
+      print(pattern_file)
       if util.file_exists(pattern_file) then
         os.execute("rm "..pattern_file)
       end
     end
+  print("finished deleting '"..filename.."' as '"..name.."' and PSET number: "..number)
   end
 end
 
@@ -265,8 +270,15 @@ end
 -- NOTE FUNCTIONS
 --
 function note_on(note_num, vel)
-  --m:note_on(note_num, vel)
-  engine.noteOn(note_num, musicutil.note_num_to_freq(note_num), vel)
+  if params:get("output") == 1 then
+    engine.noteOn(note_num, musicutil.note_num_to_freq(note_num), vel)
+  elseif params:get("output") == 2 then
+    m:note_on(note_num, vel)
+  elseif params:get("output") == 3 then
+    m:note_on(note_num, vel)
+    engine.noteOn(note_num, musicutil.note_num_to_freq(note_num), vel)
+  end
+  
   if active_midi_notes[note_num] == nil then
     active_midi_notes[note_num] = true
   end
@@ -274,17 +286,32 @@ function note_on(note_num, vel)
 end
 
 function note_off(note_num)
-  --m:note_off(note_num)
-  engine.noteOff(note_num)
+  if params:get("output") == 1 then
+    engine.noteOff(note_num)
+  elseif params:get("output") == 2 then
+    m:note_off(note_num)
+  elseif params:get("output") == 3 then
+    m:note_off(note_num)
+    engine.noteOff(note_num)
+  end
+
   active_midi_notes[note_num] = nil
   --print("note_off:"..musicutil.note_num_to_name(note_num,true))
 end
 
 function all_notes_off()
---  for k,v in pairs(active_midi_notes) do
---    note_off(v)
---  end
-  engine.noteOffAll()
+  if params:get("output") == 1 then
+    engine.noteOffAll()
+  elseif params:get("output") == 2 then
+  for k,v in pairs(active_midi_notes) do
+    note_off(v)
+  end
+  elseif params:get("output") == 3 then
+    engine.noteOffAll()
+    for k,v in pairs(active_midi_notes) do
+      note_off(v)
+    end
+  end
 end
   
 
