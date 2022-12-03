@@ -57,7 +57,8 @@ pat_timer = {}
 --
 function init_parameters()
 
-  params:add_separator("sketch - routing")
+  params:add_separator("SKETCH")
+  params:add_group("SKETCH - ROUTING",3)
   params:add{
     type="option",
     id="output",
@@ -85,7 +86,7 @@ function init_parameters()
     default=2
   }
   
-  params:add_separator("sketch - keyboard")
+  params:add_group("SKETCH - KEYBOARD",4)
   params:add{
     type="option",
     id="scale",
@@ -135,7 +136,8 @@ function init_parameters()
 end
 
 function init_engine()
-  params:add_separator()
+  params:add_group("SKETCH - MOLLY THE POLY",46)
+  --params:add_separator()
   MollyThePoly.add_params()
 end
 
@@ -147,7 +149,7 @@ function init_pattern_recorders()
 --  grid_pattern.process = grid_note
   
   grid_pattern = {}
-  for i=1,7 do
+  for i=1,8 do
     grid_pattern[i] = pattern_time.new()
     grid_pattern[i].process = grid_note
   end
@@ -173,8 +175,8 @@ end
 function init_pset_callbacks()
   params.action_write = function(filename,name,number)
     local pattern_data = {}
-    for i=1,7 do
-      local pattern_file = PATH..number.."_pattern_"..i..".pdata"
+    for i=1,8 do
+      local pattern_file = PATH.."sketch-"..number.."_pattern_"..i..".pdata"
       if grid_pattern[i].count > 0 then
         pattern_data[i] = {}
         pattern_data[i].event = grid_pattern[i].event
@@ -194,8 +196,8 @@ function init_pset_callbacks()
   params.action_read = function(filename,silent,number)
     local pset_file = io.open(filename, "r")
     local pattern_data = {}
-    for i=1,7 do
-      local pattern_file = PATH..number.."_pattern_"..i..".pdata"
+    for i=1,8 do
+      local pattern_file = PATH.."sketch-"..number.."_pattern_"..i..".pdata"
       if util.file_exists(pattern_file) then
         pattern_data[i] = {}
         grid_pattern[i]:rec_stop()
@@ -214,8 +216,8 @@ function init_pset_callbacks()
   
   params.action_delete = function(filename,name,number)
     print("finished deleting '"..filename.."' as '"..name.."' and PSET number: "..number)
-    for i=1,7 do
-      local pattern_file = PATH..number.."_pattern_"..i..".pdata"
+    for i=1,8 do
+      local pattern_file = PATH.."sketch-"..number.."_pattern_"..i..".pdata"
       print(pattern_file)
       if util.file_exists(pattern_file) then
         os.execute("rm "..pattern_file)
@@ -327,10 +329,10 @@ function build_scale()
 
   row_start_note = params:get("root_note")
   midi_note = {}
-  for row = 7,1,-1 do
+  for row = 8,1,-1 do
     note_value = row_start_note
     midi_note[row] = {}
-    for col = 1,16 do
+    for col = 3,16 do
       midi_note[row][col] = {}
       midi_note[row][col].value = note_value
       for i=1,112 do
@@ -417,21 +419,24 @@ end
 
 function g.key(x,y,z)
   -- pattern recorders
-  if y == 8 then
-    if x < 8 then
-      active_grid_pattern = x
-      if z == 1 then
-        pat_timer[x] = clock.run(pattern_long_press,x)
-      elseif z == 0 then
-        if pat_timer[x] then
-          clock.cancel(pat_timer[x])
-          pattern_short_press(x)
-        end
+  if x == 1 then
+    active_grid_pattern = y
+    if z == 1 then
+      pattern_rec_press(y)
+    end
+  elseif x == 2 then
+    active_grid_pattern = y
+    if z == 1 then
+      pat_timer[y] = clock.run(pattern_clear_press,y)
+    elseif z == 0 then
+      if pat_timer[y] then
+        clock.cancel(pat_timer[y])
+        pattern_stop_press(y)
       end
     end
 
   -- notes
-  elseif y < 8 then
+  elseif x > 2 then
     local e = {}
     e.id = x*8 + y
     e.x = x
@@ -443,29 +448,38 @@ function g.key(x,y,z)
   grid_dirty = true
 end
 
-function pattern_long_press(x)
+function pattern_clear_press(y)
   clock.sleep(0.5)
-  grid_pattern[x]:stop()
-  grid_pattern[x]:clear()
-  pat_timer[x] = nil
+  grid_pattern[y]:stop()
+  grid_pattern[y]:clear()
+  pat_timer[y] = nil
   grid_dirty = true
 end
 
-function pattern_short_press(x)
-  if grid_pattern[x].rec == 0 and grid_pattern[x].count == 0 then
-    grid_pattern[x]:stop()
-    grid_pattern[x]:rec_start()
-  elseif grid_pattern[x].rec == 1 then
-    grid_pattern[x]:rec_stop()
-    grid_pattern[x]:start()
-  elseif grid_pattern[x].play == 1 then
-    grid_pattern[x]:stop()
-    all_notes_off()
-  elseif grid_pattern[x].play == 0 and grid_pattern[x].count > 0 then
-    grid_pattern[x]:start()
+function pattern_stop_press(y)
+  grid_pattern[y]:rec_stop()
+  grid_pattern[y]:stop()
+  all_notes_off()
+  grid_dirty = true
+end
+
+function pattern_rec_press(y)
+  if grid_pattern[y].rec == 0 and grid_pattern[y].count == 0 then
+    grid_pattern[y]:stop()
+    grid_pattern[y]:rec_start()
+  elseif grid_pattern[y].rec == 1 then
+    grid_pattern[y]:rec_stop()
+    grid_pattern[y]:start()
+  elseif grid_pattern[y].play == 1 and grid_pattern[y].overdub == 0 then
+    grid_pattern[y]:set_overdub(1)
+  elseif grid_pattern[y].play == 1 and grid_pattern[y].overdub == 1 then
+    grid_pattern[y]:set_overdub(0)
+  elseif grid_pattern[y].play == 0 and grid_pattern[y].count > 0 then
+    grid_pattern[y]:start()
   end
   grid_dirty = true
 end
+
 
 --
 -- REDRAW FUNCTIONS
@@ -497,20 +511,30 @@ end
 
 function grid_redraw()
   g:all(0)
-  for x = 1,7 do
-    if grid_pattern[x].play == 1 then
-      g:led(x,8,10)
-    elseif grid_pattern[x].rec == 1 then
-      g:led(x,8,15)
-    elseif grid_pattern[x].play == 0 and grid_pattern[x].count > 0 then
-      g:led(x,8,7)
-    else
-      g:led(x,8,4)
+  for y= 1,8 do
+    for x= 1,2 do
+      if x == 1 then
+        if grid_pattern[y].play == 1 and grid_pattern[y].overdub == 1 then
+          g:led(x,y,15)
+        elseif grid_pattern[y].play == 1 and grid_pattern[y].overdub == 0 then
+          g:led(x,y,8)
+        elseif grid_pattern[y].rec == 1 then
+          g:led(x,y,15)
+        else
+          g:led(x,y,4)
+        end
+      elseif x == 2 then
+        if grid_pattern[y].count > 0 then
+          g:led(x,y,15)
+        else
+          g:led(x,y,4)
+        end
+      end
     end
   end
 
-  for x = 1,16 do
-    for y = 7,1,-1 do
+  for x = 3,16 do
+    for y = 8,1,-1 do
       -- scale notes
       if midi_note[y][x].in_scale == true then
         g:led(x,y,4)
