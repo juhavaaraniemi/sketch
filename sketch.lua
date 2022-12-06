@@ -303,11 +303,14 @@ end
 
 function all_notes_off()
   if params:get("output") == 1 then
-    engine.noteOffAll()
+    --engine.noteOffAll()
+    for k,v in pairs(active_midi_notes) do
+      note_off(k)
+    end
   elseif params:get("output") == 2 then
-  for k,v in pairs(active_midi_notes) do
-    note_off(v)
-  end
+    for k,v in pairs(active_midi_notes) do
+      note_off(v)
+    end
   elseif params:get("output") == 3 then
     engine.noteOffAll()
     for k,v in pairs(active_midi_notes) do
@@ -459,7 +462,7 @@ end
 function pattern_stop_press(y)
   grid_pattern[y]:rec_stop()
   grid_pattern[y]:stop()
-  all_notes_off()
+  --all_notes_off()
   grid_dirty = true
 end
 
@@ -468,6 +471,7 @@ function pattern_rec_press(y)
     grid_pattern[y]:stop()
     grid_pattern[y]:rec_start()
   elseif grid_pattern[y].rec == 1 then
+    all_notes_off()
     grid_pattern[y]:rec_stop()
     grid_pattern[y]:start()
   elseif grid_pattern[y].play == 1 and grid_pattern[y].overdub == 0 then
