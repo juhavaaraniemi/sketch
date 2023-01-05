@@ -5,7 +5,7 @@
 -- and pattern recorder 
 -- for sketching
 --
--- speaks molly the poly
+-- speaks mx.synths
 --
 -- e1   scale
 -- e2   root note
@@ -17,8 +17,9 @@
 --
 pattern_time = require 'pattern_time'
 musicutil = require 'musicutil'
-MollyThePoly = require "molly_the_poly/lib/molly_the_poly_engine"
-engine.name = "MollyThePoly"
+local mxsynths_=include("mx.synths/lib/mx.synths")
+engine.name="MxSynths"
+--mxsynths=mxsynths_:new()
 
 
 --
@@ -112,6 +113,10 @@ function init_molly()
   MollyThePoly.add_params()
 end
 
+function init_mxsynths()
+  mxsynths=mxsynths_:new({save=true,previous=true})
+end
+
 function init_pattern_recorders()
   grid_pattern = {}
   for i=1,8 do
@@ -123,7 +128,7 @@ end
 
 function init()
   init_parameters()
-  init_molly()
+  init_mxsynths()
   init_pattern_recorders()
   init_pset_callbacks()
   clock.run(grid_redraw_clock)
@@ -226,23 +231,25 @@ end
 --
 function note_on(id,note_num)
   if params:get("output") == 1 then
-    engine.noteOn(id,musicutil.note_num_to_freq(note_num),80)
+    engine.mx_note_on(note_num,0.5,600)
+    --engine.noteOn(id,musicutil.note_num_to_freq(note_num),80)
   elseif params:get("output") == 2 then
     m:note_on(id,note_num, vel)
   elseif params:get("output") == 3 then
     m:note_on(note_num, vel)
-    engine.noteOn(id,musicutil.note_num_to_freq(note_num),80)
+    engine.mx_note_on(note_num,0.5,600)
   end
 end
 
 function note_off(id,note_num)
   if params:get("output") == 1 then
-    engine.noteOff(id)
+    --engine.noteOff(id)
+    engine.mx_note_off(note_num)
   elseif params:get("output") == 2 then
     m:note_off(note_num)
   elseif params:get("output") == 3 then
     m:note_off(note_num)
-    engine.noteOff(id)
+    engine.mx_note_off(note_num)
   end
 end
 
