@@ -40,7 +40,6 @@ for i = 1, #musicutil.SCALES do
 end
 lit = {}
 pat_timer = {}
-undo_timer = {}
 blink_counter = 0
 blink = false
 
@@ -228,9 +227,9 @@ function note_on(id,note_num)
   if params:get("output") == 1 then
     engine.noteOn(id,musicutil.note_num_to_freq(note_num),80)
   elseif params:get("output") == 2 then
-    m:note_on(id,note_num, vel)
+    m:note_on(note_num, 100, params:get("note_channel"))
   elseif params:get("output") == 3 then
-    m:note_on(note_num, vel)
+    m:note_on(note_num, 100, params:get("note_channel"))
     engine.noteOn(id,musicutil.note_num_to_freq(note_num),80)
   end
 end
@@ -239,9 +238,9 @@ function note_off(id,note_num)
   if params:get("output") == 1 then
     engine.noteOff(id)
   elseif params:get("output") == 2 then
-    m:note_off(note_num)
+    m:note_off(note_num, 100, params:get("note_channel"))
   elseif params:get("output") == 3 then
-    m:note_off(note_num)
+    m:note_off(note_num, 100, params:get("note_channel"))
     engine.noteOff(id)
   end
 end
@@ -278,6 +277,10 @@ end
 function get_note(x,y)
   return util.clamp((8-y)*params:get("row_interval")+params:get("ytranspose")*params:get("row_interval")+(x-3),0,120)
 end
+
+function get_grid_xy(note_num)
+end
+
 
 function note_in_scale(note)
   return in_scale[note] ~= nil
