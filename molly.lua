@@ -1,5 +1,5 @@
 -- sketch
--- v 0.5
+-- v 0.6
 --
 -- isomorphic keyboard 
 -- and pattern recorder 
@@ -24,7 +24,6 @@ engine.name = "MollyThePoly"
 -- DEVICES
 --
 g = grid.connect()
-m = midi.connect()
 
 
 --
@@ -41,6 +40,7 @@ lit = {}
 pat_timer = {}
 blink_counter = 0
 blink = false
+reading_midi_input = true
 
 
 --
@@ -48,7 +48,7 @@ blink = false
 --
 function init_parameters()
   params:add_separator("SKETCH")
-  params:add_group("SKETCH - ROUTING",2)
+  params:add_group("SKETCH - ROUTING",5)
   params:add{
     type="option",
     id="output",
@@ -57,9 +57,41 @@ function init_parameters()
     default=1
   }
   params:add{
+    type = "number",
+    id = "midi_in_device",
+    name = "midi in device",
+    min = 1,
+    max = 4,
+    default = 1,
+    action = function(value)
+      midi_in_device.event = nil
+      midi_in_device = midi.connect(value)
+      midi_in_device.event = midi_event
+    end
+  }
+  params:add{
     type="number",
-    id="note_channel",
-    name="midi note channel",
+    id="midi_in_channel",
+    name="midi in channel",
+    min=1,
+    max=16,
+    default=1
+  }
+  params:add{
+    type = "number",
+    id = "midi_out_device",
+    name = "midi out device",
+    min = 1,
+    max = 4,
+    default = 1,
+    action = function(value)
+      midi_out_device = midi.connect(value)
+    end
+  }
+  params:add{
+    type="number",
+    id="midi_out_channel",
+    name="midi out channel",
     min=1,
     max=16,
     default=1
@@ -119,8 +151,14 @@ function init_pattern_recorders()
   active_grid_pattern = 1
 end
 
+function init_midi_devices()
+  midi_in_device = midi.connect(1)
+  midi_in_device.event = midi_event
+  midi_out_device = midi.connect(1)
+end
+
 function init()
-  m.event = midi_event
+  init_midi_devices()
   init_parameters()
   init_molly()
   init_pattern_recorders()
@@ -227,9 +265,9 @@ function note_on(id,note_num)
   if params:get("output") == 1 then
     engine.noteOn(id,musicutil.note_num_to_freq(note_num),0.8)
   elseif params:get("output") == 2 then
-    m:note_on(note_num, 100, params:get("note_channel"))
+    midi_out_device:note_on(note_num, 100, params:get("midi_out_channel"))
   elseif params:get("output") == 3 then
-    m:note_on(note_num, 100, params:get("note_channel"))
+    midi_out_device:note_on(note_num, 100, params:get("midi_out_channel"))
     engine.noteOn(id,musicutil.note_num_to_freq(note_num),0.8)
   end
 end
@@ -238,24 +276,26 @@ function note_off(id,note_num)
   if params:get("output") == 1 then
     engine.noteOff(id)
   elseif params:get("output") == 2 then
-    m:note_off(note_num, 100, params:get("note_channel"))
+    midi_out_device:note_off(note_num, 100, params:get("midi_out_channel"))
   elseif params:get("output") == 3 then
-    m:note_off(note_num, 100, params:get("note_channel"))
+    midi_out_device:note_off(note_num, 100, params:get("midi_out_channel"))
     engine.noteOff(id)
   end
 end
 
 function midi_event(data)
   local msg = midi.to_msg(data)
-  local channel_param = params:get("note_channel")
 
-  -- Note off
-  if msg.type == "note_off" then
-    note_off(msg.note, msg.note)
-
-  -- Note on
-  elseif msg.type == "note_on" then
-    note_on(msg.note, msg.note, msg.vel / 127)
+  if params:get("output") == 1 then
+    if msg.ch == params:get("midi_in_channel") then
+        -- Note off
+        if msg.type == "note_off" then
+          note_off(msg.note, msg.note)
+        -- Note on
+        elseif msg.type == "note_on" then
+          note_on(msg.note, msg.note, msg.vel / 127)
+        end
+    end
   end
 end
 
@@ -316,6 +356,11 @@ end
 -- UI FUNCTIONS
 --
 function key(n,z)
+  if n == 2 and z == 1 then
+    pattern_rec_press(active_grid_pattern)
+  elseif n == 3 and z == 1 then
+    pattern_stop_press(active_grid_pattern)
+  end
 end
 
 function enc(n,d)
