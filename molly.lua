@@ -20,7 +20,6 @@ musicutil = require 'musicutil'
 MollyThePoly = require "molly_the_poly/lib/molly_the_poly_engine"
 engine.name = "MollyThePoly"
 
-
 --
 -- DEVICES
 --
@@ -296,11 +295,9 @@ end
 function get_grid_xy(note_num)
 end
 
-
 function note_in_scale(note)
   return in_scale[note] ~= nil
 end
-
 
 function build_scale()
   note_nums = {}
@@ -417,10 +414,10 @@ function pattern_rec_press(pattern)
   screen_dirty = true
 end
 
+
 --
 -- REDRAW FUNCTIONS
 --
-
 function redraw()
   screen.clear()
   screen.level(15)
