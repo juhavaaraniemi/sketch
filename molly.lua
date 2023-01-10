@@ -121,6 +121,7 @@ function init_pattern_recorders()
 end
 
 function init()
+  m.event = midi_event
   init_parameters()
   init_molly()
   init_pattern_recorders()
@@ -225,12 +226,12 @@ end
 --
 function note_on(id,note_num)
   if params:get("output") == 1 then
-    engine.noteOn(id,musicutil.note_num_to_freq(note_num),80)
+    engine.noteOn(id,musicutil.note_num_to_freq(note_num),0.8)
   elseif params:get("output") == 2 then
     m:note_on(note_num, 100, params:get("note_channel"))
   elseif params:get("output") == 3 then
     m:note_on(note_num, 100, params:get("note_channel"))
-    engine.noteOn(id,musicutil.note_num_to_freq(note_num),80)
+    engine.noteOn(id,musicutil.note_num_to_freq(note_num),0.8)
   end
 end
 
@@ -242,6 +243,20 @@ function note_off(id,note_num)
   elseif params:get("output") == 3 then
     m:note_off(note_num, 100, params:get("note_channel"))
     engine.noteOff(id)
+  end
+end
+
+function midi_event(data)
+  local msg = midi.to_msg(data)
+  local channel_param = params:get("note_channel")
+
+  -- Note off
+  if msg.type == "note_off" then
+    note_off(msg.note, msg.note)
+
+  -- Note on
+  elseif msg.type == "note_on" then
+    note_on(msg.note, msg.note, msg.vel / 127)
   end
 end
 
