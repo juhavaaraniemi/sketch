@@ -40,7 +40,6 @@ lit = {}
 pat_timer = {}
 blink_counter = 0
 blink = false
-reading_midi_input = true
 
 
 --
@@ -48,12 +47,19 @@ reading_midi_input = true
 --
 function init_parameters()
   params:add_separator("SKETCH")
-  params:add_group("SKETCH - ROUTING",5)
+  params:add_group("SKETCH - ROUTING",6)
   params:add{
     type="option",
-    id="output",
-    name="output",
-    options={"audio","midi","audio+midi"},
+    id="audio",
+    name="audio output",
+    options={"on","off"},
+    default=1
+  }
+  params:add{
+    type="option",
+    id="midi_routing",
+    name="midi",
+    options={"send","receive"},
     default=1
   }
   params:add{
@@ -262,36 +268,30 @@ end
 -- NOTE FUNCTIONS
 --
 function note_on(id,note_num)
-  if params:get("output") == 1 then
+  if params:get("audio") == 1 then
     engine.noteOn(id,musicutil.note_num_to_freq(note_num),0.8)
-  elseif params:get("output") == 2 then
+  end
+  if params:get("midi") == 1 then
     midi_out_device:note_on(note_num, 100, params:get("midi_out_channel"))
-  elseif params:get("output") == 3 then
-    midi_out_device:note_on(note_num, 100, params:get("midi_out_channel"))
-    engine.noteOn(id,musicutil.note_num_to_freq(note_num),0.8)
   end
 end
 
 function note_off(id,note_num)
-  if params:get("output") == 1 then
+  if params:get("audio") == 1 then
     engine.noteOff(id)
-  elseif params:get("output") == 2 then
+  end
+  if params:get("midi") == 1 then
     midi_out_device:note_off(note_num, 100, params:get("midi_out_channel"))
-  elseif params:get("output") == 3 then
-    midi_out_device:note_off(note_num, 100, params:get("midi_out_channel"))
-    engine.noteOff(id)
   end
 end
 
 function midi_event(data)
   local msg = midi.to_msg(data)
 
-  if params:get("output") == 1 then
+  if params:get("midi") == 2 then
     if msg.ch == params:get("midi_in_channel") then
-        -- Note off
         if msg.type == "note_off" then
           note_off(msg.note, msg.note)
-        -- Note on
         elseif msg.type == "note_on" then
           note_on(msg.note, msg.note, msg.vel / 127)
         end
