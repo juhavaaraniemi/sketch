@@ -1,5 +1,5 @@
 -- sketch
--- v 0.7
+-- v 0.8
 --
 -- isomorphic keyboard 
 -- and pattern recorder 
@@ -79,6 +79,7 @@ function init_parameters()
     max = 4,
     default = 1,
     action = function(value)
+      note_off_all()
       midi_in_device.event = nil
       midi_in_device = midi.connect(value)
       midi_in_device.event = midi_event
@@ -100,6 +101,7 @@ function init_parameters()
     max = 4,
     default = 1,
     action = function(value)
+      note_off_all()
       midi_out_device = midi.connect(value)
     end
   }
@@ -131,6 +133,9 @@ function init_parameters()
     default=0,
     formatter=function(param)
       return musicutil.note_num_to_name(param:get(),false)
+    end,
+    action=function()
+      clear_ringing_notes()
     end
   }
   params:add{
@@ -139,7 +144,10 @@ function init_parameters()
     name="transpose y",
     min=0,
     max=13,
-    default=5
+    default=5,
+    action=function()
+      clear_ringing_notes()
+    end
   }
   params:add{
     type="number",
@@ -330,13 +338,23 @@ function clear_pattern_notes(pattern)
   end
 end
 
+function clear_ringing_notes()
+  for i,e in pairs(lit) do
+    local n = {}
+    n.id = e.note..e.x..e.y
+    n.note = e.note
+    n.state = 0
+    grid_note(n)
+  end
+end
+
 function grid_note(e)
   if e.state == 1 then
     note_on(e.id,e.note+params:get("root_note"))
     print(e.note+params:get("root_note"))
     lit[e.id] = {}
-    lit[e.id].pattern = e.pattern
-    lit[e.id].x = e.x --+e.trans-params:get("xtranspose")
+    lit[e.id].note = e.note
+    lit[e.id].x = e.x
     lit[e.id].y = e.y-e.trans+params:get("ytranspose")
   elseif e.state == 0 then
     if lit[e.id] ~= nil then
