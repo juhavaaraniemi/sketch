@@ -34,7 +34,7 @@ grid_dirty = true
 screen_dirty = true
 scale_names = {}
 for i = 1, #musicutil.SCALES do
-  table.insert(scale_names, musicutil.SCALES[i].name)
+  table.insert(scale_names, string.lower(musicutil.SCALES[i].name))
 end
 lit = {}
 pat_timer = {}
@@ -57,9 +57,9 @@ function init_parameters()
   }
   params:add{
     type="option",
-    id="midi_routing",
+    id="midi",
     name="midi",
-    options={"send","receive"},
+    options={"send","receive","off"},
     default=1
   }
   params:add{
@@ -466,8 +466,10 @@ end
 function redraw()
   screen.clear()
   screen.level(15)
+  screen.move(0,32)
+  screen.text("audio: "..params:string("audio"))
   screen.move(0,39)
-  screen.text("output: "..params:string("output"))
+  screen.text("midi: "..params:string("midi"))
   screen.move(0,46)
   screen.text("transpose y: "..params:get("ytranspose"))
   screen.move(0,53)
