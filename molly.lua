@@ -6,10 +6,13 @@
 -- for sketching
 --
 -- speaks molly the poly
+-- reads and writes midi
 --
 -- e1   scale
 -- e2   root note
 -- e3   transpose grid
+-- k2   audio on/off
+-- k3   midi send/receive/off
 
 
 --
@@ -53,14 +56,20 @@ function init_parameters()
     id="audio",
     name="audio output",
     options={"on","off"},
-    default=1
+    default=1,
+    action = function(value)
+      note_off_all()
+    end
   }
   params:add{
     type="option",
     id="midi",
     name="midi",
     options={"send","receive","off"},
-    default=1
+    default=1,
+    action = function(value)
+      note_off_all()
+    end
   }
   params:add{
     type = "number",
@@ -239,16 +248,18 @@ end
 function grid_redraw_clock()
   while true do
     clock.sleep(1/30)
---    if grid_dirty then
-      grid_redraw()
---      grid_dirty = false
---    end
-    
+
     if blink_counter == 5 then
       blink = not blink
       blink_counter = 0
+      grid_dirty = true
     else
       blink_counter = blink_counter + 1
+    end
+
+    if grid_dirty then
+      grid_redraw()
+      grid_dirty = false
     end
   end
 end
@@ -284,6 +295,14 @@ function note_off(id,note_num)
     midi_out_device:note_off(note_num, 100, params:get("midi_out_channel"))
   end
 end
+
+function note_off_all()
+  engine.noteOffAll()
+  for i=0,127 do
+    midi_out_device:note_off(i, 100, params:get("midi_out_channel"))
+  end
+end
+
 
 function midi_event(data)
   local msg = midi.to_msg(data)
