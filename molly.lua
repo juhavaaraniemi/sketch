@@ -1,5 +1,5 @@
 -- sketch
--- v 0.6
+-- v 0.7
 --
 -- isomorphic keyboard 
 -- and pattern recorder 
@@ -357,10 +357,21 @@ end
 --
 function key(n,z)
   if n == 2 and z == 1 then
-    pattern_rec_press(active_grid_pattern)
+    if params:get("audio") == 1 then
+      params:set("audio",2)
+    else
+      params:set("audio",1)
+    end
   elseif n == 3 and z == 1 then
-    pattern_stop_press(active_grid_pattern)
+    if params:get("midi") == 1 then
+      params:set("midi",2)
+    elseif params:get("midi") == 2 then
+      params:set("midi",3)
+    elseif params:get("midi") == 3 then
+      params:set("midi",1)
+    end
   end
+  screen_dirty = true
 end
 
 function enc(n,d)
@@ -466,9 +477,9 @@ end
 function redraw()
   screen.clear()
   screen.level(15)
-  screen.move(0,32)
+  screen.move(0,18)
   screen.text("audio: "..params:string("audio"))
-  screen.move(0,39)
+  screen.move(0,25)
   screen.text("midi: "..params:string("midi"))
   screen.move(0,46)
   screen.text("transpose y: "..params:get("ytranspose"))
