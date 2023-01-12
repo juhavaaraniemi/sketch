@@ -5,7 +5,7 @@
 -- and pattern recorder 
 -- for sketching
 --
--- speaks molly the poly
+-- speaks passersby
 -- reads and writes midi
 --
 -- e1   scale
@@ -20,8 +20,8 @@
 --
 pattern_time = require 'pattern_time'
 musicutil = require 'musicutil'
-MollyThePoly = require "molly_the_poly/lib/molly_the_poly_engine"
-engine.name = "MollyThePoly"
+MollyThePoly = require "passersby/lib/passersby_engine"
+engine.name = "Passersby"
 
 --
 -- DEVICES
