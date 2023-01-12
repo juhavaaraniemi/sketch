@@ -350,6 +350,7 @@ end
 
 function grid_note(e)
   if e.state == 1 then
+    --get_grid_y(e.note)
     note_on(e.id,e.note+params:get("root_note"))
     print(e.note+params:get("root_note"))
     lit[e.id] = {}
@@ -369,7 +370,12 @@ function get_note(x,y)
   return util.clamp((8-y)*params:get("row_interval")+params:get("ytranspose")*params:get("row_interval")+(x-3),0,120)
 end
 
-function get_grid_xy(note_num)
+function get_grid_y(note_num)
+  local row = 8 + params:get("ytranspose") - note_num / params:get("row_interval")
+  row = math.ceil(row)
+  local col = note_num + 3 - params:get("ytranspose") * params:get("row_interval") + 8 - row*params:get("row_interval")
+  print("row: "..row)
+  print("col: "..col)
 end
 
 function note_in_scale(note)
