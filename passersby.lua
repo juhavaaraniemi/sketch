@@ -20,7 +20,7 @@
 --
 pattern_time = require 'pattern_time'
 musicutil = require 'musicutil'
-MollyThePoly = require "passersby/lib/passersby_engine"
+Passersby = require "passersby/lib/passersby_engine"
 engine.name = "Passersby"
 
 --
@@ -160,9 +160,9 @@ function init_parameters()
   params:bang()
 end
 
-function init_molly()
-  params:add_group("SKETCH - MOLLY THE POLY",46)
-  MollyThePoly.add_params()
+function init_passersby()
+  params:add_group("SKETCH - PASSERSBY",31)
+  Passersby.add_params()
 end
 
 function init_pattern_recorders()
@@ -183,7 +183,7 @@ end
 function init()
   init_midi_devices()
   init_parameters()
-  init_molly()
+  init_passersby()
   init_pattern_recorders()
   init_pset_callbacks()
   clock.run(grid_redraw_clock)
