@@ -250,6 +250,7 @@ function init_pset_callbacks()
 end
 
 function xD1.param_changed_callback(id)
+  print("param change: "..id)
 end
 
 
