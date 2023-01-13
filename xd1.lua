@@ -311,6 +311,7 @@ function note_off_all()
   --engine.noteOffAll()
   
   for i=0,127 do
+    engine.note_off(i,0)
     midi_out_device:note_off(i, 100, params:get("midi_out_channel"))
   end
 end
