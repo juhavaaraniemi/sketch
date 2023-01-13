@@ -249,6 +249,9 @@ function init_pset_callbacks()
   end
 end
 
+function xD1.param_changed_callback(id)
+end
+
 
 --
 -- CLOCK FUNCTIONS
