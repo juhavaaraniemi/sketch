@@ -535,6 +535,7 @@ function redraw()
   screen.text("root note: "..musicutil.note_num_to_name(params:get("root_note"), false))
   screen.move(0,60)
   screen.text("scale: "..scale_names[params:get("scale")])
+  screen.display_png(_path.code.."/xD1/img/" .. params:get("alg") .. ".png", 70, 4)
   screen.update()
 end
 
