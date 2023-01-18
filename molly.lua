@@ -180,14 +180,25 @@ function init_midi_devices()
   midi_out_device = midi.connect(1)
 end
 
+function init_params_poll()
+  param_values = {}
+  for i=1,params.count do
+    param_values[i] = params:get(params:get_id(i))
+    last_param_id = ""
+    last_param_value = ""
+  end
+end
+
 function init()
   init_midi_devices()
   init_parameters()
   init_molly()
   init_pattern_recorders()
   init_pset_callbacks()
+  init_params_poll()
   clock.run(grid_redraw_clock)
   clock.run(redraw_clock)
+  clock.run(poll_params_clock)
 end
 
 
@@ -278,6 +289,21 @@ function redraw_clock()
     if screen_dirty then
       redraw()
       screen_dirty = false
+    end
+  end
+end
+
+function poll_params_clock()
+  while true do
+    clock.sleep(1/30)
+    for i=1,params.count do
+      if param_values[i] ~= params:get(params:get_id(i)) then
+        --print(params:get_id(i))
+        last_param_id = params:get_id(i)
+        last_param_value = util.round(params:get(params:get_id(i)),0.01)
+        param_values[i] = params:get(params:get_id(i))
+        screen_dirty = true
+      end
     end
   end
 end
@@ -520,10 +546,14 @@ end
 function redraw()
   screen.clear()
   screen.level(15)
-  screen.move(0,18)
+  screen.move(0,11)
   screen.text("audio: "..params:string("audio"))
-  screen.move(0,25)
+  screen.move(0,18)
   screen.text("midi: "..params:string("midi"))
+  screen.move(0,28)
+  screen.text("last: "..last_param_id)
+  screen.move(0,35)
+  screen.text("value: "..last_param_value)
   screen.move(0,46)
   screen.text("transpose y: "..params:get("ytranspose"))
   screen.move(0,53)
