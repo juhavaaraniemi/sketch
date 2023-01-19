@@ -24,6 +24,7 @@ musicutil = require 'musicutil'
 MollyThePoly = require "molly_the_poly/lib/molly_the_poly_engine"
 engine.name = "MollyThePoly"
 
+
 --
 -- DEVICES
 --
@@ -379,9 +380,8 @@ end
 
 function grid_note(e)
   if e.state == 1 then
-    --get_grid_y(e.note)
     note_on(e.id,e.note+params:get("root_note"))
-    print(e.note+params:get("root_note"))
+    --print(e.note+params:get("root_note"))
     lit[e.id] = {}
     lit[e.id].note = e.note
     lit[e.id].x = e.x
