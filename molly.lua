@@ -1,5 +1,5 @@
 -- sketch
--- v 0.8
+-- v 0.9
 --
 -- isomorphic keyboard 
 -- and pattern recorder 
@@ -186,6 +186,7 @@ function init_params_poll()
     param_values[i] = params:get(params:get_id(i))
     last_param_id = ""
     last_param_value = ""
+    last_param = ""
   end
 end
 
@@ -299,13 +300,8 @@ function poll_params_clock()
     clock.sleep(1/30)
     for i=1,params.count do
       if param_values[i] ~= params:get(params:get_id(i)) then
-        print(params:t(i))
         last_param_id = params:get_id(i)
-        if params:t(i) == 2 then
-          last_param_value = params:string(params:get_id(i))
-        else 
-          last_param_value = util.round(params:get(params:get_id(i)),0.01)
-        end
+        last_param_value = params:string(params:get_id(i))
         param_values[i] = params:get(params:get_id(i))
         screen_dirty = true
       end
