@@ -5,6 +5,7 @@
 -- and pattern recorder 
 -- for sketching
 --
+-- listens to grid
 -- speaks molly the poly
 -- reads and writes midi
 --
