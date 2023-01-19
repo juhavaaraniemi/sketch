@@ -185,8 +185,8 @@ function init_params_poll()
   for i=1,params.count do
     param_values[i] = params:get(params:get_id(i))
     last_param_id = ""
+    last_param_name = ""
     last_param_value = ""
-    last_param = ""
   end
 end
 
@@ -301,6 +301,7 @@ function poll_params_clock()
     for i=1,params.count do
       if param_values[i] ~= params:get(params:get_id(i)) then
         last_param_id = params:get_id(i)
+        last_param_name = params:lookup_param(i).name
         last_param_value = params:string(params:get_id(i))
         param_values[i] = params:get(params:get_id(i))
         screen_dirty = true
@@ -552,7 +553,7 @@ function redraw()
   screen.move(0,18)
   screen.text("midi: "..params:string("midi"))
   screen.move(0,28)
-  screen.text("last: "..last_param_id)
+  screen.text("last: "..last_param_name)
   screen.move(0,35)
   screen.text("value: "..last_param_value)
   screen.move(0,46)
