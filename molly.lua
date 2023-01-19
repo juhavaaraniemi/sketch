@@ -230,12 +230,13 @@ function init_pset_callbacks()
     local pset_file = io.open(filename, "r")
     local pattern_data = {}
     for i=1,8 do
+      grid_pattern[i]:rec_stop()
+      grid_pattern[i]:stop()
+      grid_pattern[i]:clear()
       local pattern_file = PATH.."sketch-"..number.."_pattern_"..i..".pdata"
       if util.file_exists(pattern_file) then
         pattern_data[i] = {}
-        grid_pattern[i]:rec_stop()
-        grid_pattern[i]:stop()
-        grid_pattern[i]:clear()
+        
         pattern_data[i] = tab.load(pattern_file)
         for k,v in pairs(pattern_data[i]) do
           grid_pattern[i][k] = v
@@ -298,9 +299,13 @@ function poll_params_clock()
     clock.sleep(1/30)
     for i=1,params.count do
       if param_values[i] ~= params:get(params:get_id(i)) then
-        --print(params:get_id(i))
+        print(params:t(i))
         last_param_id = params:get_id(i)
-        last_param_value = util.round(params:get(params:get_id(i)),0.01)
+        if params:t(i) == 2 then
+          last_param_value = params:string(params:get_id(i))
+        else 
+          last_param_value = util.round(params:get(params:get_id(i)),0.01)
+        end
         param_values[i] = params:get(params:get_id(i))
         screen_dirty = true
       end
