@@ -29,6 +29,7 @@ engine.name = "MollyThePoly"
 -- DEVICES
 --
 g = grid.connect()
+mft = midi.connect(2)
 
 
 --
@@ -185,10 +186,71 @@ end
 function init_params_poll()
   param_values = {}
   for i=1,params.count do
-    param_values[i] = params:get(params:get_id(i))
-    last_param_id = ""
-    last_param_name = ""
-    last_param_value = ""
+    local p = params:lookup_param(i)
+    param_values[p.id] = {}
+    if p.t == 3 then
+      param_values[p.id].value = p.controlspec:unmap(params:get(p.id))
+      param_values[p.id].min = 0
+      param_values[p.id].max = 1
+      param_values[p.id].cc_value = util.round(util.linlin(param_values[p.id].min,param_values[p.id].max,0,127,param_values[p.id].value))
+    elseif p.t == 1 or p.t == 2 then
+      param_values[p.id].value = params:get(p.id)
+      param_values[p.id].min = params:get_range(p.id)[1]
+      param_values[p.id].max = params:get_range(p.id)[2]
+      param_values[p.id].cc_value = util.round(util.linlin(param_values[p.id].min,param_values[p.id].max,0,127,param_values[p.id].value))
+    end
+  end
+  last_param_id = ""
+  last_param_name = ""
+  last_param_value = ""
+end
+
+function init_params_to_cc()
+  local function unquote(s)
+    return s:gsub('^"', ''):gsub('"$', ''):gsub('\\"', '"')
+  end
+  local filename = norns.state.data..norns.state.shortname..".pmap"
+  print(">> reading PMAP "..filename.." to initialize midi controller")
+  local fd = io.open(filename, "r")
+  if fd then
+    io.close(fd)
+    for line in io.lines(filename) do
+      local name, value = string.match(line, "(\".-\")%s*:%s*(.*)")
+      if name and value and tonumber(value)==nil then
+        local param_id = unquote(name)
+        s = unquote(value)
+        s = string.gsub(s,"{","")
+        s = string.gsub(s,"}","")
+        for key, val in string.gmatch(s, "(%S-)=(%d+)") do
+          if key == "dev" then
+            param_values[param_id].dev = val
+          elseif key == "ch" then
+            param_values[param_id].ch = val
+          elseif key == "cc" then
+            param_values[param_id].cc = val
+          end
+        end
+      end
+    end
+  else
+    print("m.read: "..filename.." not read, using defaults.")
+  end
+end
+
+function redraw_midi_ctrl()
+  for i=1,params.count do
+    local p = params:lookup_param(i)
+    if p.t == 3 then
+      param_values[p.id].value = p.controlspec:unmap(params:get(p.id))
+      param_values[p.id].cc_value = util.round(util.linlin(param_values[p.id].min,param_values[p.id].max,0,127,param_values[p.id].value))
+      --print(p.id.." "..param_values[p.id].cc_value)
+      mft:cc(param_values[p.id].cc, param_values[p.id].cc_value, param_values[p.id].ch)
+    elseif p.t == 1 or p.t == 2 then
+      param_values[p.id].value = params:get(p.id)
+      param_values[p.id].cc_value = util.round(util.linlin(param_values[p.id].min,param_values[p.id].max,0,127,param_values[p.id].value))
+      --print(p.id.." "..param_values[p.id].cc_value)
+      mft:cc(param_values[p.id].cc, param_values[p.id].cc_value, param_values[p.id].ch)
+    end
   end
 end
 
@@ -199,6 +261,8 @@ function init()
   init_pattern_recorders()
   init_pset_callbacks()
   init_params_poll()
+  init_params_to_cc()
+  redraw_midi_ctrl()
   clock.run(grid_redraw_clock)
   clock.run(redraw_clock)
   clock.run(poll_params_clock)
@@ -246,6 +310,7 @@ function init_pset_callbacks()
         end
       end
     end
+    redraw_midi_ctrl()
     grid_dirty = true
     screen_dirty = true
     print("finished reading '"..filename.."' as PSET number: "..number)
@@ -301,11 +366,13 @@ function poll_params_clock()
   while true do
     clock.sleep(1/30)
     for i=1,params.count do
-      if param_values[i] ~= params:get(params:get_id(i)) then
-        last_param_id = params:get_id(i)
+      param_id = params:get_id(i)
+      if param_values[param_id].value ~= params:get(param_id) then
+        params:get_id(i)
+        last_param_id = param_id
         last_param_name = params:lookup_param(i).name
         last_param_value = params:string(params:get_id(i))
-        param_values[i] = params:get(params:get_id(i))
+        param_values[params:get_id(i)].value = params:get(params:get_id(i))
         screen_dirty = true
       end
     end
