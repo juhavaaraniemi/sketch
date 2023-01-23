@@ -123,6 +123,7 @@ function init_parameters()
     max = 4,
     default = 2,
     action = function(value)
+      clear_midi_ctrl()
       midi_ctrl_device = midi.connect(value)
     end
   }
@@ -252,7 +253,7 @@ function clear_midi_ctrl()
   end
 end
 
-function redraw_midi_ctrl()
+function init_midi_ctrl()
   for i=1,params.count do
     local p = params:lookup_param(i)
     if p.t == 3 then
@@ -276,7 +277,7 @@ function init()
   init_params_poll()
   init_params_to_cc()
   clear_midi_ctrl()
-  redraw_midi_ctrl()
+  init_midi_ctrl()
   clock.run(grid_redraw_clock)
   clock.run(redraw_clock)
   clock.run(poll_params_clock)
@@ -325,7 +326,7 @@ function init_pset_callbacks()
       end
     end
     clear_midi_ctrl()
-    redraw_midi_ctrl()
+    init_midi_ctrl()
     grid_dirty = true
     screen_dirty = true
     print("finished reading '"..filename.."' as PSET number: "..number)
