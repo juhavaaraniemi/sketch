@@ -235,6 +235,12 @@ function init_params_to_cc()
   end
 end
 
+function clear_midi_ctrl()
+  for i=0,63 do
+    mft:cc(i, 0, 1)
+  end
+end
+
 function redraw_midi_ctrl()
   for i=1,params.count do
     local p = params:lookup_param(i)
@@ -260,6 +266,7 @@ function init()
   init_pset_callbacks()
   init_params_poll()
   init_params_to_cc()
+  clear_midi_ctrl()
   redraw_midi_ctrl()
   clock.run(grid_redraw_clock)
   clock.run(redraw_clock)
