@@ -247,12 +247,10 @@ function redraw_midi_ctrl()
     if p.t == 3 then
       param_values[p.id].value = p.controlspec:unmap(params:get(p.id))
       param_values[p.id].cc_value = util.round(util.linlin(param_values[p.id].min,param_values[p.id].max,0,127,param_values[p.id].value))
-      --print(p.id.." "..param_values[p.id].cc_value)
       mft:cc(param_values[p.id].cc, param_values[p.id].cc_value, param_values[p.id].ch)
     elseif p.t == 1 or p.t == 2 then
       param_values[p.id].value = params:get(p.id)
       param_values[p.id].cc_value = util.round(util.linlin(param_values[p.id].min,param_values[p.id].max,0,127,param_values[p.id].value))
-      --print(p.id.." "..param_values[p.id].cc_value)
       mft:cc(param_values[p.id].cc, param_values[p.id].cc_value, param_values[p.id].ch)
     end
   end
@@ -315,6 +313,7 @@ function init_pset_callbacks()
         end
       end
     end
+    clear_midi_ctrl()
     redraw_midi_ctrl()
     grid_dirty = true
     screen_dirty = true
