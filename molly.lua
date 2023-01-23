@@ -192,12 +192,10 @@ function init_params_poll()
       param_values[p.id].value = p.controlspec:unmap(params:get(p.id))
       param_values[p.id].min = 0
       param_values[p.id].max = 1
-      param_values[p.id].cc_value = util.round(util.linlin(param_values[p.id].min,param_values[p.id].max,0,127,param_values[p.id].value))
     elseif p.t == 1 or p.t == 2 then
       param_values[p.id].value = params:get(p.id)
       param_values[p.id].min = params:get_range(p.id)[1]
       param_values[p.id].max = params:get_range(p.id)[2]
-      param_values[p.id].cc_value = util.round(util.linlin(param_values[p.id].min,param_values[p.id].max,0,127,param_values[p.id].value))
     end
   end
   last_param_id = ""
