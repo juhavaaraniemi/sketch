@@ -29,7 +29,6 @@ engine.name = "MollyThePoly"
 -- DEVICES
 --
 g = grid.connect()
-mft = midi.connect(2)
 
 
 --
@@ -53,7 +52,7 @@ blink = false
 --
 function init_parameters()
   params:add_separator("SKETCH")
-  params:add_group("SKETCH - ROUTING",6)
+  params:add_group("SKETCH - ROUTING",7)
   params:add{
     type="option",
     id="audio",
@@ -115,6 +114,17 @@ function init_parameters()
     min=1,
     max=16,
     default=1
+  }
+    params:add{
+    type = "number",
+    id = "midi_ctrl_device",
+    name = "midi ctrl device",
+    min = 1,
+    max = 4,
+    default = 2,
+    action = function(value)
+      midi_ctrl_device = midi.connect(value)
+    end
   }
   params:add_group("SKETCH - KEYBOARD",4)
   params:add{
@@ -181,6 +191,7 @@ function init_midi_devices()
   midi_in_device = midi.connect(1)
   midi_in_device.event = midi_event
   midi_out_device = midi.connect(1)
+  midi_ctrl_device = midi.connect(2)
 end
 
 function init_params_poll()
@@ -236,8 +247,8 @@ function init_params_to_cc()
 end
 
 function clear_midi_ctrl()
-  for i=0,63 do
-    mft:cc(i, 0, 1)
+  for i=0,127 do
+    midi_ctrl_device:cc(i, 0, 1)
   end
 end
 
@@ -247,11 +258,11 @@ function redraw_midi_ctrl()
     if p.t == 3 then
       param_values[p.id].value = p.controlspec:unmap(params:get(p.id))
       param_values[p.id].cc_value = util.round(util.linlin(param_values[p.id].min,param_values[p.id].max,0,127,param_values[p.id].value))
-      mft:cc(param_values[p.id].cc, param_values[p.id].cc_value, param_values[p.id].ch)
+      midi_ctrl_device:cc(param_values[p.id].cc, param_values[p.id].cc_value, param_values[p.id].ch)
     elseif p.t == 1 or p.t == 2 then
       param_values[p.id].value = params:get(p.id)
       param_values[p.id].cc_value = util.round(util.linlin(param_values[p.id].min,param_values[p.id].max,0,127,param_values[p.id].value))
-      mft:cc(param_values[p.id].cc, param_values[p.id].cc_value, param_values[p.id].ch)
+      midi_ctrl_device:cc(param_values[p.id].cc, param_values[p.id].cc_value, param_values[p.id].ch)
     end
   end
 end
