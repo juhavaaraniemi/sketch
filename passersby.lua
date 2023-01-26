@@ -50,7 +50,7 @@ blink = false
 --
 function init_parameters()
   params:add_separator("SKETCH")
-  params:add_group("SKETCH - ROUTING",6)
+  params:add_group("SKETCH - ROUTING",7)
   params:add{
     type="option",
     id="audio",
@@ -112,6 +112,18 @@ function init_parameters()
     min=1,
     max=16,
     default=1
+  }
+    params:add{
+    type = "number",
+    id = "midi_ctrl_device",
+    name = "midi ctrl device",
+    min = 1,
+    max = 4,
+    default = 2,
+    action = function(value)
+      clear_midi_ctrl()
+      midi_ctrl_device = midi.connect(value)
+    end
   }
   params:add_group("SKETCH - KEYBOARD",4)
   params:add{
@@ -178,6 +190,80 @@ function init_midi_devices()
   midi_in_device = midi.connect(1)
   midi_in_device.event = midi_event
   midi_out_device = midi.connect(1)
+  midi_ctrl_device = midi.connect(2)
+end
+
+function init_params_poll()
+  param_values = {}
+  for i=1,params.count do
+    local p = params:lookup_param(i)
+    param_values[p.id] = {}
+    if p.t == 3 then
+      param_values[p.id].value = p.controlspec:unmap(params:get(p.id))
+      param_values[p.id].min = 0
+      param_values[p.id].max = 1
+    elseif p.t == 1 or p.t == 2 then
+      param_values[p.id].value = params:get(p.id)
+      param_values[p.id].min = params:get_range(p.id)[1]
+      param_values[p.id].max = params:get_range(p.id)[2]
+    end
+  end
+  last_param_id = ""
+  last_param_name = ""
+  last_param_value = ""
+end
+
+function init_params_to_cc()
+  local function unquote(s)
+    return s:gsub('^"', ''):gsub('"$', ''):gsub('\\"', '"')
+  end
+  local filename = norns.state.data..norns.state.shortname..".pmap"
+  print(">> reading PMAP "..filename.." to initialize midi controller")
+  local fd = io.open(filename, "r")
+  if fd then
+    io.close(fd)
+    for line in io.lines(filename) do
+      local name, value = string.match(line, "(\".-\")%s*:%s*(.*)")
+      if name and value and tonumber(value)==nil then
+        local param_id = unquote(name)
+        s = unquote(value)
+        s = string.gsub(s,"{","")
+        s = string.gsub(s,"}","")
+        for key, val in string.gmatch(s, "(%S-)=(%d+)") do
+          if key == "dev" then
+            param_values[param_id].dev = val
+          elseif key == "ch" then
+            param_values[param_id].ch = val
+          elseif key == "cc" then
+            param_values[param_id].cc = val
+          end
+        end
+      end
+    end
+  else
+    print("m.read: "..filename.." not read, using defaults.")
+  end
+end
+
+function clear_midi_ctrl()
+  for i=0,127 do
+    midi_ctrl_device:cc(i, 0, 1)
+  end
+end
+
+function init_midi_ctrl()
+  for i=1,params.count do
+    local p = params:lookup_param(i)
+    if p.t == 3 then
+      param_values[p.id].value = p.controlspec:unmap(params:get(p.id))
+      param_values[p.id].cc_value = util.round(util.linlin(param_values[p.id].min,param_values[p.id].max,0,127,param_values[p.id].value))
+      midi_ctrl_device:cc(param_values[p.id].cc, param_values[p.id].cc_value, param_values[p.id].ch)
+    elseif p.t == 1 or p.t == 2 then
+      param_values[p.id].value = params:get(p.id)
+      param_values[p.id].cc_value = util.round(util.linlin(param_values[p.id].min,param_values[p.id].max,0,127,param_values[p.id].value))
+      midi_ctrl_device:cc(param_values[p.id].cc, param_values[p.id].cc_value, param_values[p.id].ch)
+    end
+  end
 end
 
 function init()
@@ -186,8 +272,13 @@ function init()
   init_passersby()
   init_pattern_recorders()
   init_pset_callbacks()
+  init_params_poll()
+  init_params_to_cc()
+  clear_midi_ctrl()
+  init_midi_ctrl()
   clock.run(grid_redraw_clock)
   clock.run(redraw_clock)
+  clock.run(poll_params_clock)
 end
 
 
@@ -219,18 +310,21 @@ function init_pset_callbacks()
     local pset_file = io.open(filename, "r")
     local pattern_data = {}
     for i=1,8 do
+      grid_pattern[i]:rec_stop()
+      grid_pattern[i]:stop()
+      grid_pattern[i]:clear()
       local pattern_file = PATH.."sketch-"..number.."_pattern_"..i..".pdata"
       if util.file_exists(pattern_file) then
         pattern_data[i] = {}
-        grid_pattern[i]:rec_stop()
-        grid_pattern[i]:stop()
-        grid_pattern[i]:clear()
+        
         pattern_data[i] = tab.load(pattern_file)
         for k,v in pairs(pattern_data[i]) do
           grid_pattern[i][k] = v
         end
       end
     end
+    clear_midi_ctrl()
+    init_midi_ctrl()
     grid_dirty = true
     screen_dirty = true
     print("finished reading '"..filename.."' as PSET number: "..number)
@@ -278,6 +372,23 @@ function redraw_clock()
     if screen_dirty then
       redraw()
       screen_dirty = false
+    end
+  end
+end
+
+function poll_params_clock()
+  while true do
+    clock.sleep(1/30)
+    for i=1,params.count do
+      param_id = params:get_id(i)
+      if param_values[param_id].value ~= params:get(param_id) then
+        params:get_id(i)
+        last_param_id = param_id
+        last_param_name = params:lookup_param(i).name
+        last_param_value = params:string(params:get_id(i))
+        param_values[params:get_id(i)].value = params:get(params:get_id(i))
+        screen_dirty = true
+      end
     end
   end
 end
@@ -514,10 +625,14 @@ end
 function redraw()
   screen.clear()
   screen.level(15)
-  screen.move(0,18)
+  screen.move(0,11)
   screen.text("audio: "..params:string("audio"))
-  screen.move(0,25)
+  screen.move(0,18)
   screen.text("midi: "..params:string("midi"))
+  screen.move(0,28)
+  screen.text("last: "..last_param_name)
+  screen.move(0,35)
+  screen.text("value: "..last_param_value)
   screen.move(0,46)
   screen.text("transpose y: "..params:get("ytranspose"))
   screen.move(0,53)
