@@ -21,6 +21,8 @@
 --
 pattern_time = require 'pattern_time'
 musicutil = require 'musicutil'
+--package.loaded["mftconf/lib/mftconf"] = nil
+mftconf = require "mftconf/lib/mftconf"
 MollyThePoly = require "molly_the_poly/lib/molly_the_poly_engine"
 engine.name = "MollyThePoly"
 
@@ -34,7 +36,7 @@ g = grid.connect()
 --
 -- VARIABLES
 --
-PATH = _path.data.."sketch/"
+PATH = _path.data.."sketch/molly/"
 grid_dirty = true
 screen_dirty = true
 scale_names = {}
@@ -274,6 +276,7 @@ function init()
   init_molly()
   init_pattern_recorders()
   init_pset_callbacks()
+  mftconf.load_conf(midi_ctrl_device,PATH.."mft_molly.mfs")
   init_params_poll()
   init_params_to_cc()
   clear_midi_ctrl()
