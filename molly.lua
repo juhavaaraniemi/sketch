@@ -21,7 +21,7 @@
 --
 pattern_time = require 'pattern_time'
 musicutil = require 'musicutil'
---package.loaded["mftconf/lib/mftconf"] = nil
+package.loaded["mftconf/lib/mftconf"] = nil
 mftconf = require "mftconf/lib/mftconf"
 MollyThePoly = require "molly_the_poly/lib/molly_the_poly_engine"
 engine.name = "MollyThePoly"
@@ -125,7 +125,6 @@ function init_parameters()
     max = 4,
     default = 2,
     action = function(value)
-      clear_midi_ctrl()
       midi_ctrl_device = midi.connect(value)
     end
   }
@@ -197,79 +196,6 @@ function init_midi_devices()
   midi_ctrl_device = midi.connect(2)
 end
 
-function init_params_poll()
-  param_values = {}
-  for i=1,params.count do
-    local p = params:lookup_param(i)
-    param_values[p.id] = {}
-    if p.t == 3 then
-      param_values[p.id].value = p.controlspec:unmap(params:get(p.id))
-      param_values[p.id].min = 0
-      param_values[p.id].max = 1
-    elseif p.t == 1 or p.t == 2 then
-      param_values[p.id].value = params:get(p.id)
-      param_values[p.id].min = params:get_range(p.id)[1]
-      param_values[p.id].max = params:get_range(p.id)[2]
-    end
-  end
-  last_param_id = ""
-  last_param_name = ""
-  last_param_value = ""
-end
-
-function init_params_to_cc()
-  local function unquote(s)
-    return s:gsub('^"', ''):gsub('"$', ''):gsub('\\"', '"')
-  end
-  local filename = norns.state.data..norns.state.shortname..".pmap"
-  print(">> reading PMAP "..filename.." to initialize midi controller")
-  local fd = io.open(filename, "r")
-  if fd then
-    io.close(fd)
-    for line in io.lines(filename) do
-      local name, value = string.match(line, "(\".-\")%s*:%s*(.*)")
-      if name and value and tonumber(value)==nil then
-        local param_id = unquote(name)
-        s = unquote(value)
-        s = string.gsub(s,"{","")
-        s = string.gsub(s,"}","")
-        for key, val in string.gmatch(s, "(%S-)=(%d+)") do
-          if key == "dev" then
-            param_values[param_id].dev = val
-          elseif key == "ch" then
-            param_values[param_id].ch = val
-          elseif key == "cc" then
-            param_values[param_id].cc = val
-          end
-        end
-      end
-    end
-  else
-    print("m.read: "..filename.." not read, using defaults.")
-  end
-end
-
-function clear_midi_ctrl()
-  for i=0,127 do
-    midi_ctrl_device:cc(i, 0, 1)
-  end
-end
-
-function init_midi_ctrl()
-  for i=1,params.count do
-    local p = params:lookup_param(i)
-    if p.t == 3 then
-      param_values[p.id].value = p.controlspec:unmap(params:get(p.id))
-      param_values[p.id].cc_value = util.round(util.linlin(param_values[p.id].min,param_values[p.id].max,0,127,param_values[p.id].value))
-      midi_ctrl_device:cc(param_values[p.id].cc, param_values[p.id].cc_value, param_values[p.id].ch)
-    elseif p.t == 1 or p.t == 2 then
-      param_values[p.id].value = params:get(p.id)
-      param_values[p.id].cc_value = util.round(util.linlin(param_values[p.id].min,param_values[p.id].max,0,127,param_values[p.id].value))
-      midi_ctrl_device:cc(param_values[p.id].cc, param_values[p.id].cc_value, param_values[p.id].ch)
-    end
-  end
-end
-
 function init()
   init_midi_devices()
   init_parameters()
@@ -277,10 +203,7 @@ function init()
   init_pattern_recorders()
   init_pset_callbacks()
   mftconf.load_conf(midi_ctrl_device,PATH.."mft_molly.mfs")
-  init_params_poll()
-  init_params_to_cc()
-  clear_midi_ctrl()
-  init_midi_ctrl()
+  mftconf.refresh_values(midi_ctrl_device)
   clock.run(grid_redraw_clock)
   clock.run(redraw_clock)
   clock.run(poll_params_clock)
@@ -305,12 +228,12 @@ function init_pset_callbacks()
       else
         if util.file_exists(pattern_file) then
           os.execute("rm "..pattern_file)
-        end    
+        end
       end
     end
     print("finished writing '"..filename.."' as '"..name.."' and PSET number: "..number)
   end
-  
+
   params.action_read = function(filename,silent,number)
     local pset_file = io.open(filename, "r")
     local pattern_data = {}
@@ -328,8 +251,7 @@ function init_pset_callbacks()
         end
       end
     end
-    clear_midi_ctrl()
-    init_midi_ctrl()
+    mftconf.refresh_values(midi_ctrl_device)
     grid_dirty = true
     screen_dirty = true
     print("finished reading '"..filename.."' as PSET number: "..number)
@@ -382,16 +304,24 @@ function redraw_clock()
 end
 
 function poll_params_clock()
+  last_param_id = ""
+  last_param_name = ""
+  last_param_value = ""
+  param_values = {}
+  for i=1,params.count do
+    param_id = params:get_id(i)
+    param_values[params:get_id(i)] = params:get(params:get_id(i))
+  end
   while true do
     clock.sleep(1/30)
     for i=1,params.count do
       param_id = params:get_id(i)
-      if param_values[param_id].value ~= params:get(param_id) then
+      if param_values[param_id] ~= params:get(param_id) then
         params:get_id(i)
         last_param_id = param_id
         last_param_name = params:lookup_param(i).name
         last_param_value = params:string(params:get_id(i))
-        param_values[params:get_id(i)].value = params:get(params:get_id(i))
+        param_values[params:get_id(i)] = params:get(params:get_id(i))
         screen_dirty = true
       end
     end
