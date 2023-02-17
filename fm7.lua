@@ -21,7 +21,7 @@
 --
 pattern_time = require 'pattern_time'
 musicutil = require 'musicutil'
-package.loaded["mftconf/lib/mftconf"] = nil
+package.loaded["fm7/lib/fm7"] = nil
 mftconf = require "mftconf/lib/mftconf"
 FM7 = require "fm7/lib/fm7"
 engine.name = "FM7"
@@ -45,6 +45,7 @@ for i = 1, #musicutil.SCALES do
 end
 lit = {}
 pat_timer = {}
+undo_timer = {}
 blink_counter = 0
 blink = false
 
@@ -183,9 +184,11 @@ end
 
 function init_pattern_recorders()
   grid_pattern = {}
+  pattern_backup = {}
   for i=1,8 do
     grid_pattern[i] = pattern_time.new()
     grid_pattern[i].process = grid_note
+    pattern_backup[i] = {}
   end
   active_grid_pattern = 1
 end
@@ -485,7 +488,12 @@ function g.key(x,y,z)
         pattern_stop_press(active_grid_pattern)
         active_grid_pattern = y
       end
-      pattern_rec_press(active_grid_pattern)
+      undo_timer[active_grid_pattern] = clock.run(pattern_undo_press,active_grid_pattern)
+    elseif z == 0 then
+      if undo_timer[active_grid_pattern] then
+        clock.cancel(undo_timer[active_grid_pattern])
+        pattern_rec_press(active_grid_pattern)
+      end
     end
   elseif x == 2 then
     if not (grid_pattern[active_grid_pattern].rec == 1 or grid_pattern[active_grid_pattern].overdub == 1) then
@@ -535,15 +543,40 @@ function pattern_stop_press(pattern)
   screen_dirty = true
 end
 
+function pattern_undo_press(pattern)
+  clock.sleep(0.5)
+  grid_pattern[pattern]:rec_stop()
+  grid_pattern[pattern]:stop()
+  clear_pattern_notes(pattern)
+  grid_pattern[pattern]:clear()
+  grid_pattern[pattern].count = pattern_backup[pattern].count
+  grid_pattern[pattern].time_factor = pattern_backup[pattern].time_factor
+  grid_pattern[pattern].time = pattern_backup[pattern].time
+  grid_pattern[pattern].event = pattern_backup[pattern].event
+  undo_timer[pattern] = nil
+  grid_dirty = true
+  screen_dirty = true
+end
+
+function backup_pattern(pattern)
+  pattern_backup[pattern] = {}
+  pattern_backup[pattern].count = grid_pattern[pattern].count
+  pattern_backup[pattern].time_factor = grid_pattern[pattern].time_factor
+  pattern_backup[pattern].time = deepcopy(grid_pattern[pattern].time)
+  pattern_backup[pattern].event = deepcopy(grid_pattern[pattern].event)
+end
+
 function pattern_rec_press(pattern)
   if grid_pattern[pattern].rec == 0 and grid_pattern[pattern].count == 0 then
     grid_pattern[pattern]:stop()
+    backup_pattern(pattern)
     grid_pattern[pattern]:rec_start()
   elseif grid_pattern[pattern].rec == 1 then
     grid_pattern[pattern]:rec_stop()
     clear_pattern_notes(pattern)
     grid_pattern[pattern]:start()
   elseif grid_pattern[pattern].play == 1 and grid_pattern[pattern].overdub == 0 then
+    backup_pattern(pattern)
     grid_pattern[pattern]:set_overdub(1)
   elseif grid_pattern[pattern].play == 1 and grid_pattern[pattern].overdub == 1 then
     grid_pattern[pattern]:set_overdub(0)
@@ -557,6 +590,25 @@ function pattern_rec_press(pattern)
   end
   grid_dirty = true
   screen_dirty = true
+end
+
+
+--
+-- HELPER FUNCTIONS
+--
+function deepcopy(orig)
+    local orig_type = type(orig)
+    local copy
+    if orig_type == 'table' then
+        copy = {}
+        for orig_key, orig_value in next, orig, nil do
+            copy[deepcopy(orig_key)] = deepcopy(orig_value)
+        end
+        setmetatable(copy, deepcopy(getmetatable(orig)))
+    else -- number, string, boolean, etc
+        copy = orig
+    end
+    return copy
 end
 
 
