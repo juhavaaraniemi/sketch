@@ -200,17 +200,32 @@ function init_midi_devices()
   midi_ctrl_device = midi.connect(2)
 end
 
+function init_poll_params()
+  last_param_id = ""
+  last_param_name = ""
+  last_param_value = ""
+  param_values = {}
+  for i=1,params.count do
+    param_id = params:get_id(i)
+    param_values[params:get_id(i)] = params:get(params:get_id(i))
+  end
+end
+
 function init()
   init_midi_devices()
   init_parameters()
   init_fm7()
   init_pattern_recorders()
   init_pset_callbacks()
+  init_poll_params()
   mftconf.load_conf(midi_ctrl_device,PATH.."mft_fm7.mfs")
   mftconf.refresh_values(midi_ctrl_device)
-  clock.run(grid_redraw_clock)
-  clock.run(redraw_clock)
-  clock.run(poll_params_clock)
+  grid_redraw_metro = metro.init(grid_redraw_event, 1/30, -1)
+  grid_redraw_metro:start()
+  redraw_metro = metro.init(redraw_event, 1/30, -1)
+  redraw_metro:start()
+  poll_params_metro = metro.init(poll_params_event, 1/30, -1)
+  poll_params_metro:start()
 end
 
 
@@ -278,56 +293,38 @@ end
 --
 -- CLOCK FUNCTIONS
 --
-function grid_redraw_clock()
-  while true do
-    clock.sleep(1/30)
+function grid_redraw_event()
+  if blink_counter == 5 then
+    blink = not blink
+    blink_counter = 0
+    grid_dirty = true
+  else
+    blink_counter = blink_counter + 1
+  end
 
-    if blink_counter == 5 then
-      blink = not blink
-      blink_counter = 0
-      grid_dirty = true
-    else
-      blink_counter = blink_counter + 1
-    end
-
-    if grid_dirty then
-      grid_redraw()
-      grid_dirty = false
-    end
+  if grid_dirty then
+    grid_redraw()
+    grid_dirty = false
   end
 end
 
-function redraw_clock()
-  while true do
-    clock.sleep(1/30)
-    if screen_dirty then
-      redraw()
-      screen_dirty = false
-    end
+function redraw_event()
+  if screen_dirty then
+    redraw()
+    screen_dirty = false
   end
 end
 
-function poll_params_clock()
-  last_param_id = ""
-  last_param_name = ""
-  last_param_value = ""
-  param_values = {}
+function poll_params_event()
   for i=1,params.count do
     param_id = params:get_id(i)
-    param_values[params:get_id(i)] = params:get(params:get_id(i))
-  end
-  while true do
-    clock.sleep(1/30)
-    for i=1,params.count do
-      param_id = params:get_id(i)
-      if param_values[param_id] ~= params:get(param_id) then
-        params:get_id(i)
-        last_param_id = param_id
-        last_param_name = params:lookup_param(i).name
-        last_param_value = params:string(params:get_id(i))
-        param_values[params:get_id(i)] = params:get(params:get_id(i))
-        screen_dirty = true
-      end
+    if param_values[param_id] ~= params:get(param_id) then
+      params:get_id(i)
+      last_param_id = param_id
+      last_param_name = params:lookup_param(i).name
+      last_param_value = params:string(params:get_id(i))
+      param_values[params:get_id(i)] = params:get(params:get_id(i))
+      screen_dirty = true
     end
   end
 end
