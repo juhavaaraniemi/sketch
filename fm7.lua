@@ -21,7 +21,7 @@
 --
 pattern_time = require 'pattern_time'
 musicutil = require 'musicutil'
-package.loaded["fm7/lib/fm7"] = nil
+package.loaded["mftconf/lib/mftconf"] = nil
 mftconf = require "mftconf/lib/mftconf"
 FM7 = require "fm7/lib/fm7"
 engine.name = "FM7"
@@ -324,6 +324,7 @@ function poll_params_event()
       last_param_name = params:lookup_param(i).name
       last_param_value = params:string(params:get_id(i))
       param_values[params:get_id(i)] = params:get(params:get_id(i))
+      mftconf.mft_redraw(midi_ctrl_device,last_param_id)
       screen_dirty = true
     end
   end
