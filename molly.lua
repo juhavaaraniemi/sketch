@@ -45,6 +45,7 @@ for i = 1, #musicutil.SCALES do
 end
 lit = {}
 pat_timer = {}
+undo_timer = {}
 blink_counter = 0
 blink = false
 
@@ -182,9 +183,11 @@ end
 
 function init_pattern_recorders()
   grid_pattern = {}
+  pattern_backup = {}
   for i=1,8 do
     grid_pattern[i] = pattern_time.new()
     grid_pattern[i].process = grid_note
+    pattern_backup[i] = {}
   end
   active_grid_pattern = 1
 end
@@ -196,17 +199,32 @@ function init_midi_devices()
   midi_ctrl_device = midi.connect(2)
 end
 
+function init_poll_params()
+  last_param_id = ""
+  last_param_name = ""
+  last_param_value = ""
+  param_values = {}
+  for i=1,params.count do
+    param_id = params:get_id(i)
+    param_values[params:get_id(i)] = params:get(params:get_id(i))
+  end
+end
+
 function init()
   init_midi_devices()
   init_parameters()
   init_molly()
   init_pattern_recorders()
   init_pset_callbacks()
+  init_poll_params()
   mftconf.load_conf(midi_ctrl_device,PATH.."mft_molly.mfs")
   mftconf.refresh_values(midi_ctrl_device)
-  clock.run(grid_redraw_clock)
-  clock.run(redraw_clock)
-  clock.run(poll_params_clock)
+  grid_redraw_metro = metro.init(grid_redraw_event, 1/30, -1)
+  grid_redraw_metro:start()
+  redraw_metro = metro.init(redraw_event, 1/30, -1)
+  redraw_metro:start()
+  poll_params_metro = metro.init(poll_params_event, 1/30, -1)
+  poll_params_metro:start()
 end
 
 
@@ -274,56 +292,39 @@ end
 --
 -- CLOCK FUNCTIONS
 --
-function grid_redraw_clock()
-  while true do
-    clock.sleep(1/30)
+function grid_redraw_event()
+  if blink_counter == 5 then
+    blink = not blink
+    blink_counter = 0
+    grid_dirty = true
+  else
+    blink_counter = blink_counter + 1
+  end
 
-    if blink_counter == 5 then
-      blink = not blink
-      blink_counter = 0
-      grid_dirty = true
-    else
-      blink_counter = blink_counter + 1
-    end
-
-    if grid_dirty then
-      grid_redraw()
-      grid_dirty = false
-    end
+  if grid_dirty then
+    grid_redraw()
+    grid_dirty = false
   end
 end
 
-function redraw_clock()
-  while true do
-    clock.sleep(1/30)
-    if screen_dirty then
-      redraw()
-      screen_dirty = false
-    end
+function redraw_event()
+  if screen_dirty then
+    redraw()
+    screen_dirty = false
   end
 end
 
-function poll_params_clock()
-  last_param_id = ""
-  last_param_name = ""
-  last_param_value = ""
-  param_values = {}
+function poll_params_event()
   for i=1,params.count do
     param_id = params:get_id(i)
-    param_values[params:get_id(i)] = params:get(params:get_id(i))
-  end
-  while true do
-    clock.sleep(1/30)
-    for i=1,params.count do
-      param_id = params:get_id(i)
-      if param_values[param_id] ~= params:get(param_id) then
-        params:get_id(i)
-        last_param_id = param_id
-        last_param_name = params:lookup_param(i).name
-        last_param_value = params:string(params:get_id(i))
-        param_values[params:get_id(i)] = params:get(params:get_id(i))
-        screen_dirty = true
-      end
+    if param_values[param_id] ~= params:get(param_id) then
+      params:get_id(i)
+      last_param_id = param_id
+      last_param_name = params:lookup_param(i).name
+      last_param_value = params:string(params:get_id(i))
+      param_values[params:get_id(i)] = params:get(params:get_id(i))
+      mftconf.mft_redraw(midi_ctrl_device,last_param_id)
+      screen_dirty = true
     end
   end
 end
@@ -484,7 +485,12 @@ function g.key(x,y,z)
         pattern_stop_press(active_grid_pattern)
         active_grid_pattern = y
       end
-      pattern_rec_press(active_grid_pattern)
+      undo_timer[active_grid_pattern] = clock.run(pattern_undo_press,active_grid_pattern)
+    elseif z == 0 then
+      if undo_timer[active_grid_pattern] then
+        clock.cancel(undo_timer[active_grid_pattern])
+        pattern_rec_press(active_grid_pattern)
+      end
     end
   elseif x == 2 then
     if not (grid_pattern[active_grid_pattern].rec == 1 or grid_pattern[active_grid_pattern].overdub == 1) then
@@ -534,15 +540,40 @@ function pattern_stop_press(pattern)
   screen_dirty = true
 end
 
+function pattern_undo_press(pattern)
+  clock.sleep(0.5)
+  grid_pattern[pattern]:rec_stop()
+  grid_pattern[pattern]:stop()
+  clear_pattern_notes(pattern)
+  grid_pattern[pattern]:clear()
+  grid_pattern[pattern].count = pattern_backup[pattern].count
+  grid_pattern[pattern].time_factor = pattern_backup[pattern].time_factor
+  grid_pattern[pattern].time = pattern_backup[pattern].time
+  grid_pattern[pattern].event = pattern_backup[pattern].event
+  undo_timer[pattern] = nil
+  grid_dirty = true
+  screen_dirty = true
+end
+
+function backup_pattern(pattern)
+  pattern_backup[pattern] = {}
+  pattern_backup[pattern].count = grid_pattern[pattern].count
+  pattern_backup[pattern].time_factor = grid_pattern[pattern].time_factor
+  pattern_backup[pattern].time = deepcopy(grid_pattern[pattern].time)
+  pattern_backup[pattern].event = deepcopy(grid_pattern[pattern].event)
+end
+
 function pattern_rec_press(pattern)
   if grid_pattern[pattern].rec == 0 and grid_pattern[pattern].count == 0 then
     grid_pattern[pattern]:stop()
+    backup_pattern(pattern)
     grid_pattern[pattern]:rec_start()
   elseif grid_pattern[pattern].rec == 1 then
     grid_pattern[pattern]:rec_stop()
     clear_pattern_notes(pattern)
     grid_pattern[pattern]:start()
   elseif grid_pattern[pattern].play == 1 and grid_pattern[pattern].overdub == 0 then
+    backup_pattern(pattern)
     grid_pattern[pattern]:set_overdub(1)
   elseif grid_pattern[pattern].play == 1 and grid_pattern[pattern].overdub == 1 then
     grid_pattern[pattern]:set_overdub(0)
@@ -556,6 +587,25 @@ function pattern_rec_press(pattern)
   end
   grid_dirty = true
   screen_dirty = true
+end
+
+
+--
+-- HELPER FUNCTIONS
+--
+function deepcopy(orig)
+    local orig_type = type(orig)
+    local copy
+    if orig_type == 'table' then
+        copy = {}
+        for orig_key, orig_value in next, orig, nil do
+            copy[deepcopy(orig_key)] = deepcopy(orig_value)
+        end
+        setmetatable(copy, deepcopy(getmetatable(orig)))
+    else -- number, string, boolean, etc
+        copy = orig
+    end
+    return copy
 end
 
 
