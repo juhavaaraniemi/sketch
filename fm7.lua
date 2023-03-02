@@ -597,7 +597,7 @@ function arrangement_play_press()
       arrangement_play = true
       current_pattern = 1
       pattern_rec_press(arrangement[current_pattern])
-      arrangement_metro.time = get_pattern_length(current_pattern)
+      arrangement_metro.time = get_pattern_length(arrangement[current_pattern])
       arrangement_metro:start()
     end
   end
