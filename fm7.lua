@@ -632,7 +632,7 @@ function play_next_pattern()
     arrangement_metro.time = get_pattern_length(arrangement[current_pattern])
     arrangement_metro:start()
   else
-    arrangement_state = "stop"
+    arrangement_play = false
     current_pattern = 1
   end
 end
