@@ -48,6 +48,9 @@ pat_timer = {}
 undo_timer = {}
 blink_counter = 0
 blink = false
+shifted = false
+arrangement = {}
+arrangement_play = false
 
 
 --
@@ -225,6 +228,7 @@ function init()
   redraw_metro:start()
   poll_params_metro = metro.init(poll_params_event, 1/30, -1)
   poll_params_metro:start()
+  arrangement_metro = metro.init(function() play_next_pattern() end,1,1)
 end
 
 
@@ -373,22 +377,10 @@ function midi_event(data)
   end
 end
 
-function clear_pattern_notes(pattern)
-  for i,e in pairs(grid_pattern[pattern].event) do
-    if e.state == 1 then
-      local n = {}
-      n.id = e.id
-      n.note = e.note
-      n.state = 0
-      grid_note(n)
-    end
-  end
-end
-
 function clear_ringing_notes()
   for i,e in pairs(lit) do
     local n = {}
-    n.id = e.note..e.x..e.y
+    n.id = i
     n.note = e.note
     n.state = 0
     grid_note(n)
@@ -398,7 +390,6 @@ end
 function grid_note(e)
   if e.state == 1 then
     note_on(e.id,e.note+params:get("root_note"))
-    --print(e.note+params:get("root_note"))
     lit[e.id] = {}
     lit[e.id].note = e.note
     lit[e.id].x = e.x
@@ -414,14 +405,6 @@ end
 
 function get_note(x,y)
   return util.clamp((8-y)*params:get("row_interval")+params:get("ytranspose")*params:get("row_interval")+(x-3),0,120)
-end
-
-function get_grid_y(note_num)
-  local row = 8 + params:get("ytranspose") - note_num / params:get("row_interval")
-  row = math.ceil(row)
-  local col = note_num + 3 - params:get("ytranspose") * params:get("row_interval") + 8 - row*params:get("row_interval")
-  print("row: "..row)
-  print("col: "..col)
 end
 
 function note_in_scale(note)
@@ -445,7 +428,13 @@ end
 -- UI FUNCTIONS
 --
 function key(n,z)
-  if n == 2 and z == 1 then
+  if n == 1 then
+    shifted = z == 1
+  elseif n == 2 and z == 1 and shifted then
+    arrangement_play_press()
+  elseif n == 3 and z == 1 and shifted then
+    arrangement_clear_press()
+  elseif n == 2 and z == 1 then
     if params:get("audio") == 1 then
       params:set("audio",2)
     else
@@ -477,31 +466,43 @@ end
 function g.key(x,y,z)
   -- pattern recorders
   if x == 1 then
-     if not (grid_pattern[active_grid_pattern].rec == 1 or grid_pattern[active_grid_pattern].overdub == 1) then
-      active_grid_pattern = y
-    end
     if z == 1 then
       if y ~= active_grid_pattern then
         pattern_stop_press(active_grid_pattern)
         active_grid_pattern = y
       end
-      undo_timer[active_grid_pattern] = clock.run(pattern_undo_press,active_grid_pattern)
+      if shifted then 
+        print(y.." pattern added to arrangement")
+        table.insert(arrangement,y)
+      else
+        undo_timer[active_grid_pattern] = clock.run(pattern_undo_press,active_grid_pattern)
+      end
     elseif z == 0 then
-      if undo_timer[active_grid_pattern] then
-        clock.cancel(undo_timer[active_grid_pattern])
-        pattern_rec_press(active_grid_pattern)
+      if not shifted then
+        if undo_timer[active_grid_pattern] then
+          clock.cancel(undo_timer[active_grid_pattern])
+          pattern_rec_press(active_grid_pattern)
+        end
       end
     end
   elseif x == 2 then
-    if not (grid_pattern[active_grid_pattern].rec == 1 or grid_pattern[active_grid_pattern].overdub == 1) then
-      active_grid_pattern = y
-    end
     if z == 1 then
-      pat_timer[active_grid_pattern] = clock.run(pattern_clear_press,active_grid_pattern)
+      if y ~= active_grid_pattern then
+        --pattern_stop_press(active_grid_pattern)
+        active_grid_pattern = y
+      end
+      if shifted then
+        print("last pattern removed from arrangement")
+        table.remove(arrangement)
+      else
+        pat_timer[active_grid_pattern] = clock.run(pattern_clear_press,active_grid_pattern)
+      end
     elseif z == 0 then
-      if pat_timer[active_grid_pattern] then
-        clock.cancel(pat_timer[active_grid_pattern])
-        pattern_stop_press(active_grid_pattern)
+      if not shifted then
+        if pat_timer[active_grid_pattern] then
+          clock.cancel(pat_timer[active_grid_pattern])
+          pattern_stop_press(active_grid_pattern)
+        end
       end
     end
 
@@ -519,13 +520,14 @@ function g.key(x,y,z)
     grid_pattern[active_grid_pattern]:watch(e)
     grid_note(e)
   end
+  screen_dirty = true
   grid_dirty = true
 end
 
 function pattern_clear_press(pattern)
   clock.sleep(0.5)
   grid_pattern[pattern]:stop()
-  clear_pattern_notes(pattern)
+  clear_ringing_notes(pattern)
   grid_pattern[pattern]:clear()
   pat_timer[pattern] = nil
   grid_dirty = true
@@ -535,7 +537,7 @@ end
 function pattern_stop_press(pattern)
   grid_pattern[pattern]:rec_stop()
   grid_pattern[pattern]:stop()
-  clear_pattern_notes(pattern)
+  clear_ringing_notes()
   grid_dirty = true
   screen_dirty = true
 end
@@ -544,7 +546,7 @@ function pattern_undo_press(pattern)
   clock.sleep(0.5)
   grid_pattern[pattern]:rec_stop()
   grid_pattern[pattern]:stop()
-  clear_pattern_notes(pattern)
+  clear_ringing_notes(pattern)
   grid_pattern[pattern]:clear()
   grid_pattern[pattern].count = pattern_backup[pattern].count
   grid_pattern[pattern].time_factor = pattern_backup[pattern].time_factor
@@ -570,7 +572,7 @@ function pattern_rec_press(pattern)
     grid_pattern[pattern]:rec_start()
   elseif grid_pattern[pattern].rec == 1 then
     grid_pattern[pattern]:rec_stop()
-    clear_pattern_notes(pattern)
+    clear_ringing_notes(pattern)
     grid_pattern[pattern]:start()
   elseif grid_pattern[pattern].play == 1 and grid_pattern[pattern].overdub == 0 then
     backup_pattern(pattern)
@@ -578,21 +580,62 @@ function pattern_rec_press(pattern)
   elseif grid_pattern[pattern].play == 1 and grid_pattern[pattern].overdub == 1 then
     grid_pattern[pattern]:set_overdub(0)
   elseif grid_pattern[pattern].play == 0 and grid_pattern[pattern].count > 0 then
-    --for i=1,8 do
-    --  if i ~= pattern then
-    --    grid_pattern[i]:stop()
-    --  end
-    --end
     grid_pattern[pattern]:start()
   end
   grid_dirty = true
   screen_dirty = true
 end
 
+function arrangement_play_press()
+  if arrangement_play then
+    arrangement_play = false
+    pattern_stop_press(arrangement[arr_step])
+    arrangement_metro:stop()
+  else
+    if #arrangement > 0 then
+      arrangement_play = true
+      arr_step = 1
+      pattern_rec_press(arrangement[arr_step])
+      arrangement_metro.time = get_pattern_length(arrangement[arr_step])
+      arrangement_metro:start()
+    end
+  end
+end
+
+function arrangement_clear_press()
+  if arrangement_play then
+    arrangement_play = false
+    pattern_stop_press(arrangement[arr_step])
+    arrangement_metro:stop()
+  end
+  arrangement = {}
+end
+
 
 --
 -- HELPER FUNCTIONS
 --
+function get_pattern_length(pattern)
+  local length = 0
+  for i,e in ipairs(grid_pattern[pattern].time) do
+    length = length + e
+  end
+  return length
+end
+
+function play_next_pattern()
+  pattern_stop_press(arrangement[arr_step])
+  arr_step = arr_step + 1
+  if arr_step <= #arrangement then
+    pattern_rec_press(arrangement[arr_step])
+    arrangement_metro.time = get_pattern_length(arrangement[arr_step])
+    arrangement_metro:start()
+  else
+    arrangement_play = false
+    arr_step = 1
+  end
+end
+
 function deepcopy(orig)
     local orig_type = type(orig)
     local copy
@@ -609,28 +652,54 @@ function deepcopy(orig)
 end
 
 
-
 --
 -- REDRAW FUNCTIONS
 --
 function redraw()
-  screen.clear()
-  screen.level(15)
-  screen.move(0,11)
-  screen.text("audio: "..params:string("audio"))
-  screen.move(0,18)
-  screen.text("midi: "..params:string("midi"))
-  screen.move(0,28)
-  screen.text("last: "..last_param_name)
-  screen.move(0,35)
-  screen.text("value: "..last_param_value)
-  screen.move(0,46)
-  screen.text("transpose y: "..params:get("ytranspose"))
-  screen.move(0,53)
-  screen.text("root note: "..musicutil.note_num_to_name(params:get("root_note"), false))
-  screen.move(0,60)
-  screen.text("scale: "..scale_names[params:get("scale")])
-  screen.update()
+  
+  if shifted then
+    screen.clear()
+    screen.level(15)
+    screen.move(0,11)
+    screen.text("arrangement")
+    screen.move(0,20)
+    if arrangement_play then screen.text("playing") else screen.text("stopped") end
+    local rows = math.ceil(#arrangement / 12)
+    local row_height = 7
+    local row_start_index = 1
+    local row_start_loc = 35
+    for i=1,rows do
+      screen.move(0,row_start_loc)
+      for j=row_start_index,(12*i) do
+        local arr = ""
+        if j <= #arrangement then
+          arr = arr..arrangement[j].." "
+        end
+        screen.text(arr)
+      end
+      row_start_index = row_start_index+12
+      row_start_loc = 35+(i*row_height)
+    end
+    screen.update()
+  else
+    screen.clear()
+    screen.level(15)
+    screen.move(0,11)
+    screen.text("audio: "..params:string("audio"))
+    screen.move(0,18)
+    screen.text("midi: "..params:string("midi"))
+    screen.move(0,28)
+    screen.text("last: "..last_param_name)
+    screen.move(0,35)
+    screen.text("value: "..last_param_value)
+    screen.move(0,46)
+    screen.text("transpose y: "..params:get("ytranspose"))
+    screen.move(0,53)
+    screen.text("root note: "..musicutil.note_num_to_name(params:get("root_note"), false))
+    screen.move(0,60)
+    screen.text("scale: "..scale_names[params:get("scale")])
+    screen.update()
+  end
 end
 
 function grid_redraw()
