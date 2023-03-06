@@ -590,14 +590,14 @@ end
 function arrangement_play_press()
   if arrangement_play then
     arrangement_play = false
-    pattern_stop_press(arrangement[current_pattern])
+    pattern_stop_press(arrangement[arr_step])
     arrangement_metro:stop()
   else
     if #arrangement > 0 then
       arrangement_play = true
-      current_pattern = 1
-      pattern_rec_press(arrangement[current_pattern])
-      arrangement_metro.time = get_pattern_length(arrangement[current_pattern])
+      arr_step = 1
+      pattern_rec_press(arrangement[arr_step])
+      arrangement_metro.time = get_pattern_length(arrangement[arr_step])
       arrangement_metro:start()
     end
   end
@@ -606,7 +606,7 @@ end
 function arrangement_clear_press()
   if arrangement_play then
     arrangement_play = false
-    pattern_stop_press(arrangement[current_pattern])
+    pattern_stop_press(arrangement[arr_step])
     arrangement_metro:stop()
   end
   arrangement = {}
@@ -625,15 +625,15 @@ function get_pattern_length(pattern)
 end
 
 function play_next_pattern()
-  pattern_stop_press(arrangement[current_pattern])
-  current_pattern = current_pattern + 1
-  if current_pattern <= #arrangement then
-    pattern_rec_press(arrangement[current_pattern])
-    arrangement_metro.time = get_pattern_length(arrangement[current_pattern])
+  pattern_stop_press(arrangement[arr_step])
+  arr_step = arr_step + 1
+  if arr_step <= #arrangement then
+    pattern_rec_press(arrangement[arr_step])
+    arrangement_metro.time = get_pattern_length(arrangement[arr_step])
     arrangement_metro:start()
   else
     arrangement_play = false
-    current_pattern = 1
+    arr_step = 1
   end
 end
 
