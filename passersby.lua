@@ -253,6 +253,14 @@ function init_pset_callbacks()
         end
       end
     end
+    if #arrangement > 0 then
+      local arrangement_file = PATH.."sketch-"..number.."_arrangement.adata"
+      tab.save(arrangement,arrangement_file)
+    else
+      if util.file_exists(arrangement_file) then
+          os.execute("rm "..arrangement_file)
+      end
+    end
     print("finished writing '"..filename.."' as '"..name.."' and PSET number: "..number)
   end
 
@@ -266,12 +274,16 @@ function init_pset_callbacks()
       local pattern_file = PATH.."sketch-"..number.."_pattern_"..i..".pdata"
       if util.file_exists(pattern_file) then
         pattern_data[i] = {}
-        
         pattern_data[i] = tab.load(pattern_file)
         for k,v in pairs(pattern_data[i]) do
           grid_pattern[i][k] = v
         end
       end
+    end
+    local arrangement_file = PATH.."sketch-"..number.."_arrangement.adata"
+    arrangement = {}
+    if util.file_exists(arrangement_file) then
+      arrangement = tab.load(arrangement_file)
     end
     mftconf.refresh_values(midi_ctrl_device)
     grid_dirty = true
@@ -288,7 +300,11 @@ function init_pset_callbacks()
         os.execute("rm "..pattern_file)
       end
     end
-  print("finished deleting '"..filename.."' as '"..name.."' and PSET number: "..number)
+    local arrangement_file = PATH.."sketch-"..number.."_arrangement.adata"
+    if util.file_exists(arrangement_file) then
+      os.execute("rm "..arrangement_file)
+    end
+    print("finished deleting '"..filename.."' as '"..name.."' and PSET number: "..number)
   end
 end
 
