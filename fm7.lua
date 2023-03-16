@@ -254,8 +254,8 @@ function init_pset_callbacks()
         end
       end
     end
+    local arrangement_file = PATH.."sketch-"..number.."_arrangement.adata"
     if #arrangement > 0 then
-      local arrangement_file = PATH.."sketch-"..number.."_arrangement.adata"
       tab.save(arrangement,arrangement_file)
     else
       if util.file_exists(arrangement_file) then
