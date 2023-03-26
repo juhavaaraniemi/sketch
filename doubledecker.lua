@@ -188,7 +188,6 @@ function init_doubledecker()
         {});
   nb:add_player_params()
   dd:active()
-  params:read()
 end
 
 function init_pattern_recorders()
