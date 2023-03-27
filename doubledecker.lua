@@ -188,6 +188,12 @@ function init_doubledecker()
         {});
   nb:add_player_params()
   dd:active()
+  for i=1,params.count do
+    local p = params:lookup_param(i)
+    if p.id == "doubledecker_group" then
+      p.name = "SKETCH - DOUBLEDECKER"
+    end
+  end
 end
 
 function init_pattern_recorders()
