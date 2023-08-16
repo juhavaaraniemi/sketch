@@ -23,7 +23,7 @@ pattern_time = require 'pattern_time'
 musicutil = require 'musicutil'
 package.loaded["mftconf/lib/mftconf"] = nil
 mftconf = require "mftconf/lib/mftconf"
-MollyThePoly = require "formandvoid/lib/formlib"
+FormAndVoid = require "formandvoid/lib/formlib"
 engine.name="FormAndVoid"
 
 
@@ -181,7 +181,7 @@ end
 
 function init_form()
   params:add_group("SKETCH - FORM AND VOID",46)
-  formlib.set_up_timbre(-1, "the")
+  FormAndVoid.set_up_timbre(-1, "the")
 end
 
 function init_pattern_recorders()
@@ -355,7 +355,7 @@ end
 --
 function note_on(id,note_num)
   if params:get("audio") == 1 then
-    engine.noteOn(id,musicutil.note_num_to_freq(note_num),0.8)
+    engine.noteOn(0, id, music.note_num_to_freq(note_num), 0.8)
   end
   if params:get("midi") == 1 then
     midi_out_device:note_on(note_num, 100, params:get("midi_out_channel"))
@@ -364,7 +364,7 @@ end
 
 function note_off(id,note_num)
   if params:get("audio") == 1 then
-    engine.noteOff(id)
+    engine.noteOff(0,id)
   end
   if params:get("midi") == 1 then
     midi_out_device:note_off(note_num, 100, params:get("midi_out_channel"))
