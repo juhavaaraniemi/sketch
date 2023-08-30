@@ -182,6 +182,12 @@ end
 function init_form()
   params:add_group("SKETCH - FORM AND VOID",46)
   FormAndVoid.set_up_timbre(-1, "the")
+  for i=1,params.count do
+    local p = params:lookup_param(i)
+    if p.id == "the timbre" then
+      p.name = "SKETCH - FORM AND VOID"
+    end
+  end
 end
 
 function init_pattern_recorders()
