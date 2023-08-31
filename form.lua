@@ -23,7 +23,8 @@ pattern_time = require 'pattern_time'
 musicutil = require 'musicutil'
 package.loaded["mftconf/lib/mftconf"] = nil
 mftconf = require "mftconf/lib/mftconf"
-FormAndVoid = require "formandvoid/lib/formlib"
+--FormAndVoid = require "formandvoid/lib/formlib"
+include "formandvoid/lib/formlib"
 engine.name="FormAndVoid"
 
 
@@ -180,8 +181,7 @@ function init_parameters()
 end
 
 function init_form()
-  params:add_group("SKETCH - FORM AND VOID",46)
-  FormAndVoid.set_up_timbre(-1, "the")
+  set_up_timbre(-1, "the")
   for i=1,params.count do
     local p = params:lookup_param(i)
     if p.id == "the timbre" then
@@ -226,8 +226,8 @@ function init()
   init_pattern_recorders()
   init_pset_callbacks()
   init_poll_params()
-  mftconf.load_conf(midi_ctrl_device,PATH.."mft_molly.mfs")
-  mftconf.refresh_values(midi_ctrl_device)
+--  mftconf.load_conf(midi_ctrl_device,PATH.."mft_molly.mfs")
+--  mftconf.refresh_values(midi_ctrl_device)
   grid_redraw_metro = metro.init(grid_redraw_event, 1/30, -1)
   grid_redraw_metro:start()
   redraw_metro = metro.init(redraw_event, 1/30, -1)
@@ -291,7 +291,7 @@ function init_pset_callbacks()
     if util.file_exists(arrangement_file) then
       arrangement = tab.load(arrangement_file)
     end
-    mftconf.refresh_values(midi_ctrl_device)
+--    mftconf.refresh_values(midi_ctrl_device)
     grid_dirty = true
     screen_dirty = true
     print("finished reading '"..filename.."' as PSET number: "..number)
@@ -349,7 +349,7 @@ function poll_params_event()
       last_param_name = params:lookup_param(i).name
       last_param_value = params:string(params:get_id(i))
       param_values[params:get_id(i)] = params:get(params:get_id(i))
-      mftconf.mft_redraw(midi_ctrl_device,last_param_id)
+      --mftconf.mft_redraw(midi_ctrl_device,last_param_id)
       screen_dirty = true
     end
   end
@@ -361,7 +361,7 @@ end
 --
 function note_on(id,note_num)
   if params:get("audio") == 1 then
-    engine.noteOn(0, id, music.note_num_to_freq(note_num), 0.8)
+    engine.noteOn(0, id, musicutil.note_num_to_freq(note_num), 0.8)
   end
   if params:get("midi") == 1 then
     midi_out_device:note_on(note_num, 100, params:get("midi_out_channel"))
@@ -378,7 +378,7 @@ function note_off(id,note_num)
 end
 
 function note_off_all()
-  engine.noteOffAll()
+  --engine.noteOffAll()
   for i=0,127 do
     midi_out_device:note_off(i, 100, params:get("midi_out_channel"))
   end
